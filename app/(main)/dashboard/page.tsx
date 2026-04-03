@@ -19,6 +19,7 @@ import {
 type DashboardPageProps = {
   searchParams: Promise<{
     gmail?: string | string[];
+    gmailError?: string | string[];
   }>;
 };
 
@@ -31,6 +32,9 @@ export default async function DashboardPage({
   const groqReady = isGroqConfigured();
   const googleReady = isGoogleOAuthConfigured();
   const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
+  const gmailError = Array.isArray(params.gmailError)
+    ? params.gmailError[0]
+    : params.gmailError;
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6">
@@ -44,6 +48,7 @@ export default async function DashboardPage({
         <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Gmail connection failed. Check your Google OAuth settings and try
           again.
+          {gmailError ? ` Reason: ${gmailError}` : ""}
         </div>
       ) : null}
 

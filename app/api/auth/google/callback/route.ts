@@ -44,8 +44,16 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(getDashboardUrl(request, GMAIL_CONNECTED_STATUS));
-  } catch {
-    return NextResponse.redirect(getDashboardUrl(request, GMAIL_FAILED_STATUS));
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Google OAuth callback failed.";
+
+    console.error("[GOOGLE_OAUTH] Callback failed");
+    console.error(error);
+
+    return NextResponse.redirect(
+      getDashboardUrl(request, GMAIL_FAILED_STATUS, message),
+    );
   }
 }
 
@@ -60,6 +68,16 @@ function getRefreshTokenEncrypted(
   return existingRefreshTokenEncrypted ?? "";
 }
 
-function getDashboardUrl(request: Request, gmailStatus: string) {
-  return new URL(`/dashboard?gmail=${gmailStatus}`, request.url);
+function getDashboardUrl(
+  request: Request,
+  gmailStatus: string,
+  errorMessage?: string,
+) {
+  const url = new URL(`/dashboard?gmail=${gmailStatus}`, request.url);
+
+  if (errorMessage) {
+    url.searchParams.set("gmailError", errorMessage);
+  }
+
+  return url;
 }
