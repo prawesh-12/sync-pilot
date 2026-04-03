@@ -1,180 +1,206 @@
 import { gmail_v1, google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
-import { getIntegration, isEmailProcessed } from "@/lib/db/queries";
+import { getIntegration } from "@/lib/db/queries";
 import { getGoogleOAuthConfig } from "@/lib/env";
 
 const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_USER_ID = "me";
-const GMAIL_SEARCH_QUERY = "is:unread";
 const GMAIL_MAX_RESULTS = 20;
+const DEFAULT_WINDOW_SECONDS = 15 * 60;
 const BASE64URL_CHARACTERS = [
-  { from: "-", to: "+" },
-  { from: "_", to: "/" },
+    { from: "-", to: "+" },
+    { from: "_", to: "/" },
 ];
 
 export type GmailEmail = {
-  messageId: string;
-  subject: string;
-  from: string;
-  body: string;
+    messageId: string;
+    subject: string;
+    from: string;
+    body: string;
 };
 
 export function createGoogleOAuthClient() {
-  const config = getGoogleOAuthConfig();
+    const config = getGoogleOAuthConfig();
 
-  return new google.auth.OAuth2(
-    config.clientId,
-    config.clientSecret,
-    config.redirectUri,
-  );
+    return new google.auth.OAuth2(
+        config.clientId,
+        config.clientSecret,
+        config.redirectUri,
+    );
 }
 
 export function getGoogleAuthorizationUrl(userId: string) {
-  const oauthClient = createGoogleOAuthClient();
+    const oauthClient = createGoogleOAuthClient();
 
-  return oauthClient.generateAuthUrl({
-    access_type: "offline",
-    include_granted_scopes: true,
-    prompt: "consent",
-    scope: [GMAIL_READONLY_SCOPE],
-    state: userId,
-  });
+    return oauthClient.generateAuthUrl({
+        access_type: "offline",
+        include_granted_scopes: true,
+        prompt: "consent",
+        scope: [GMAIL_READONLY_SCOPE],
+        state: userId,
+    });
 }
 
 export async function exchangeGoogleCode(code: string) {
-  const oauthClient = createGoogleOAuthClient();
-  const { tokens } = await oauthClient.getToken(code);
+    const oauthClient = createGoogleOAuthClient();
+    const { tokens } = await oauthClient.getToken(code);
 
-  return tokens;
+    return tokens;
 }
 
-export async function fetchUnreadEmails(userId: string) {
-  const integration = await getIntegration(userId);
+export async function fetchEmailsInTimeWindow(userId: string, windowEnd: Date) {
+    const integration = await getIntegration(userId);
 
-  if (!integration) {
-    throw new Error("Gmail integration not found.");
-  }
-
-  const oauthClient = createGoogleOAuthClient();
-  oauthClient.setCredentials({
-    access_token: decrypt(integration.accessTokenEncrypted),
-    refresh_token: decrypt(integration.refreshTokenEncrypted),
-  });
-
-  const gmail = google.gmail({ version: "v1", auth: oauthClient });
-  const response = await gmail.users.messages.list({
-    userId: GMAIL_USER_ID,
-    q: GMAIL_SEARCH_QUERY,
-    maxResults: GMAIL_MAX_RESULTS,
-  });
-  const emails: GmailEmail[] = [];
-
-  for (const message of response.data.messages ?? []) {
-    const messageId = message.id?.trim();
-
-    if (!messageId || (await isEmailProcessed(messageId))) {
-      continue;
+    if (!integration) {
+        throw new Error("Gmail integration not found.");
     }
 
-    emails.push(await fetchUnreadEmail(gmail, messageId));
-  }
+    const windowStart = getWindowStart(integration.lastRunTimestamp, windowEnd);
+    const query = buildTimeWindowQuery(windowStart, windowEnd);
 
-  return emails;
+    const oauthClient = createGoogleOAuthClient();
+    oauthClient.setCredentials({
+        access_token: decrypt(integration.accessTokenEncrypted),
+        refresh_token: decrypt(integration.refreshTokenEncrypted),
+    });
+
+    const gmail = google.gmail({ version: "v1", auth: oauthClient });
+    const response = await gmail.users.messages.list({
+        userId: GMAIL_USER_ID,
+        q: query,
+        maxResults: GMAIL_MAX_RESULTS,
+    });
+    const emails: GmailEmail[] = [];
+
+    for (const message of response.data.messages ?? []) {
+        const messageId = message.id?.trim();
+
+        if (!messageId) {
+            continue;
+        }
+
+        emails.push(await fetchEmail(gmail, messageId));
+    }
+
+    return emails;
 }
 
-async function fetchUnreadEmail(gmail: gmail_v1.Gmail, messageId: string) {
-  const response = await gmail.users.messages.get({
-    userId: GMAIL_USER_ID,
-    id: messageId,
-    format: "full",
-  });
-  const payload = response.data.payload;
+function getWindowStart(
+    lastRunTimestamp: Date | null | undefined,
+    windowEnd: Date,
+) {
+    if (lastRunTimestamp) {
+        return new Date(lastRunTimestamp);
+    }
 
-  return {
-    messageId,
-    subject: getHeaderValue(payload?.headers, "Subject") || "(No subject)",
-    from: getHeaderValue(payload?.headers, "From") || "Unknown sender",
-    body: getMessageBody(payload, response.data.snippet),
-  };
+    return new Date(windowEnd.getTime() - DEFAULT_WINDOW_SECONDS * 1000);
+}
+
+function buildTimeWindowQuery(windowStart: Date, windowEnd: Date) {
+    const afterUnix = toUnixSeconds(windowStart);
+    const beforeUnix = Math.max(afterUnix + 1, toUnixSeconds(windowEnd));
+
+    return `after:${afterUnix} before:${beforeUnix}`;
+}
+
+function toUnixSeconds(value: Date) {
+    return Math.floor(value.getTime() / 1000);
+}
+
+async function fetchEmail(gmail: gmail_v1.Gmail, messageId: string) {
+    const response = await gmail.users.messages.get({
+        userId: GMAIL_USER_ID,
+        id: messageId,
+        format: "full",
+    });
+    const payload = response.data.payload;
+
+    return {
+        messageId,
+        subject: getHeaderValue(payload?.headers, "Subject") || "(No subject)",
+        from: getHeaderValue(payload?.headers, "From") || "Unknown sender",
+        body: getMessageBody(payload, response.data.snippet),
+    };
 }
 
 function getHeaderValue(
-  headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
-  name: string,
+    headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
+    name: string,
 ) {
-  return headers?.find((header) => header.name?.toLowerCase() === name.toLowerCase())
-    ?.value?.trim();
+    return headers
+        ?.find((header) => header.name?.toLowerCase() === name.toLowerCase())
+        ?.value?.trim();
 }
 
 function getMessageBody(
-  payload: gmail_v1.Schema$MessagePart | undefined,
-  snippet: string | null | undefined,
+    payload: gmail_v1.Schema$MessagePart | undefined,
+    snippet: string | null | undefined,
 ) {
-  const plainText = findBodyContent(payload, "text/plain");
+    const plainText = findBodyContent(payload, "text/plain");
 
-  if (plainText) {
-    return normalizeWhitespace(plainText);
-  }
+    if (plainText) {
+        return normalizeWhitespace(plainText);
+    }
 
-  const htmlText = findBodyContent(payload, "text/html");
+    const htmlText = findBodyContent(payload, "text/html");
 
-  if (htmlText) {
-    return stripHtml(htmlText);
-  }
+    if (htmlText) {
+        return stripHtml(htmlText);
+    }
 
-  return normalizeWhitespace(snippet ?? "");
+    return normalizeWhitespace(snippet ?? "");
 }
 
 function findBodyContent(
-  part: gmail_v1.Schema$MessagePart | undefined,
-  mimeType: string,
+    part: gmail_v1.Schema$MessagePart | undefined,
+    mimeType: string,
 ): string {
-  if (!part) {
-    return "";
-  }
-
-  if (part.mimeType === mimeType && part.body?.data) {
-    return decodeBodyData(part.body.data);
-  }
-
-  for (const childPart of part.parts ?? []) {
-    const content = findBodyContent(childPart, mimeType);
-
-    if (content) {
-      return content;
+    if (!part) {
+        return "";
     }
-  }
 
-  return "";
+    if (part.mimeType === mimeType && part.body?.data) {
+        return decodeBodyData(part.body.data);
+    }
+
+    for (const childPart of part.parts ?? []) {
+        const content = findBodyContent(childPart, mimeType);
+
+        if (content) {
+            return content;
+        }
+    }
+
+    return "";
 }
 
 function decodeBodyData(data: string) {
-  let normalized = data;
+    let normalized = data;
 
-  for (const entry of BASE64URL_CHARACTERS) {
-    normalized = normalized.replaceAll(entry.from, entry.to);
-  }
+    for (const entry of BASE64URL_CHARACTERS) {
+        normalized = normalized.replaceAll(entry.from, entry.to);
+    }
 
-  return Buffer.from(normalized, "base64").toString("utf8");
+    return Buffer.from(normalized, "base64").toString("utf8");
 }
 
 function stripHtml(html: string) {
-  const text = html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+    const text = html
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">");
 
-  return normalizeWhitespace(text);
+    return normalizeWhitespace(text);
 }
 
 function normalizeWhitespace(value: string) {
-  return value
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+    return value
+        .replace(/\r\n/g, "\n")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
 }

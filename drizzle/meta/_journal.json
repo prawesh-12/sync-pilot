@@ -8,6 +8,13 @@
       "when": 1775224623157,
       "tag": "0000_yielding_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775243232560,
+      "tag": "0001_fresh_moonstone",
+      "breakpoints": true
     }
   ]
 }

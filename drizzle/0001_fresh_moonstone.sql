@@ -1,0 +1,1 @@
+ALTER TABLE "integrations" ADD COLUMN "last_run_timestamp" timestamp with time zone;

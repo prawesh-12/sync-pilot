@@ -1,159 +1,166 @@
-import { fetchUnreadEmails, type GmailEmail } from "@/lib/agent/gmail";
+import { fetchEmailsInTimeWindow, type GmailEmail } from "@/lib/agent/gmail";
 import { sendSignalMessage } from "@/lib/agent/signal";
 import { summariseEmail } from "@/lib/ai/summarise";
-import { markEmailProcessed, saveAgentRun } from "@/lib/db/queries";
+import {
+    saveAgentRun,
+    updateIntegrationLastRunTimestamp,
+} from "@/lib/db/queries";
 
 const EMAIL_PROCESS_DELAY_MS = 500;
 
 export type AgentRunSummary = {
-  emailsFound: number;
-  summariesSent: number;
-  status: "success" | "error";
+    emailsFound: number;
+    summariesSent: number;
+    status: "success" | "error";
 };
 
 type ProcessEmailResult = {
-  emailProcessed: boolean;
-  summarySent: boolean;
+    summarySent: boolean;
 };
 
 export async function runAgent(userId: string): Promise<AgentRunSummary> {
-  try {
-    console.log(`[CRON] Starting agent run for userId: ${userId}`);
+    const windowEnd = new Date();
 
-    const emails = await fetchUnreadEmails(userId);
-    console.log(`[GMAIL] Found ${emails.length} new unread emails`);
+    try {
+        console.log(`[CRON] Starting agent run for userId: ${userId}`);
 
-    const { processedEmails, summary } = await processEmails(userId, emails);
-    await saveRunResult(userId, summary);
-    logRunComplete(processedEmails);
+        const emails = await fetchEmailsInTimeWindow(userId, windowEnd);
+        console.log(
+            `[GMAIL] Found ${emails.length} emails in current sync window`,
+        );
 
-    return summary;
-  } catch (error) {
-    const message = getErrorMessage(error);
-    console.error(`[CRON] Agent run failed for userId: ${userId}`);
-    console.error(error);
+        const { summary } = await processEmails(emails);
+        await saveRunResult(userId, summary);
+        logRunComplete(summary.summariesSent);
 
-    const result = buildErrorResult();
-    await saveRunResult(userId, result, message);
+        return summary;
+    } catch (error) {
+        const message = getErrorMessage(error);
+        console.error(`[CRON] Agent run failed for userId: ${userId}`);
+        console.error(error);
 
-    return result;
-  }
+        const result = buildErrorResult();
+        await saveRunResult(userId, result, message);
+
+        return result;
+    } finally {
+        await persistLastRunTimestamp(userId, windowEnd);
+    }
 }
 
 async function processEmails(
-  userId: string,
-  emails: GmailEmail[],
-): Promise<{ processedEmails: number; summary: AgentRunSummary }> {
-  let processedEmails = 0;
-  let summariesSent = 0;
+    emails: GmailEmail[],
+): Promise<{ summary: AgentRunSummary }> {
+    let summariesSent = 0;
 
-  for (const [index, email] of emails.entries()) {
-    const result = await processEmail(userId, email);
+    for (const [index, email] of emails.entries()) {
+        const result = await processEmail(email);
 
-    if (result.emailProcessed) {
-      processedEmails += 1;
+        if (result.summarySent) {
+            summariesSent += 1;
+        }
+
+        if (index < emails.length - 1) {
+            await delay(EMAIL_PROCESS_DELAY_MS);
+        }
     }
 
-    if (result.summarySent) {
-      summariesSent += 1;
-    }
-
-    if (index < emails.length - 1) {
-      await delay(EMAIL_PROCESS_DELAY_MS);
-    }
-  }
-
-  return {
-    processedEmails,
-    summary: {
-      emailsFound: emails.length,
-      summariesSent,
-      status: "success",
-    },
-  };
+    return {
+        summary: {
+            emailsFound: emails.length,
+            summariesSent,
+            status: "success",
+        },
+    };
 }
 
-async function processEmail(
-  userId: string,
-  email: GmailEmail,
-): Promise<ProcessEmailResult> {
-  const summary = await summariseEmailWithLogging(email);
+async function processEmail(email: GmailEmail): Promise<ProcessEmailResult> {
+    const summary = await summariseEmailWithLogging(email);
 
-  if (!summary) {
+    if (!summary) {
+        return {
+            summarySent: false,
+        };
+    }
+
+    const signalResult = await sendSignalMessage(summary, email.subject);
+
+    if (!signalResult.ok) {
+        console.error(
+            `[SIGNAL] Failed to send summary for: ${email.subject} (${signalResult.error || "Unknown error"})`,
+        );
+
+        return {
+            summarySent: false,
+        };
+    }
+
+    console.log(`[SIGNAL] Sent summary for: ${email.subject}`);
+
     return {
-      emailProcessed: false,
-      summarySent: false,
+        summarySent: signalResult.ok,
     };
-  }
+}
 
-  const signalResult = await sendSignalMessage(summary, email.subject);
-  await markEmailProcessed(email.messageId, userId);
-
-  if (!signalResult.ok) {
-    console.error(
-      `[SIGNAL] Failed to send summary for: ${email.subject} (${signalResult.error || "Unknown error"})`,
-    );
-
-    return {
-      emailProcessed: true,
-      summarySent: false,
-    };
-  }
-
-  console.log(`[SIGNAL] Sent summary for: ${email.subject}`);
-
-  return {
-    emailProcessed: true,
-    summarySent: signalResult.ok,
-  };
+async function persistLastRunTimestamp(userId: string, lastRunTimestamp: Date) {
+    try {
+        await updateIntegrationLastRunTimestamp(userId, lastRunTimestamp);
+    } catch (error) {
+        console.error(
+            `[CRON] Failed to persist last_run_timestamp for userId: ${userId}`,
+        );
+        console.error(error);
+    }
 }
 
 async function summariseEmailWithLogging(email: GmailEmail) {
-  try {
-    console.log(`[AI] Summarising email: ${email.subject}`);
+    try {
+        console.log(`[AI] Summarising email: ${email.subject}`);
 
-    return await summariseEmail(email);
-  } catch (error) {
-    console.error(`[AI] Failed to summarise email: ${email.subject}`);
-    console.error(error);
+        return await summariseEmail(email);
+    } catch (error) {
+        console.error(`[AI] Failed to summarise email: ${email.subject}`);
+        console.error(error);
 
-    return "";
-  }
+        return "";
+    }
 }
 
 async function saveRunResult(
-  userId: string,
-  result: AgentRunSummary,
-  errorMessage?: string,
+    userId: string,
+    result: AgentRunSummary,
+    errorMessage?: string,
 ) {
-  try {
-    await saveAgentRun(userId, result);
-  } catch (error) {
-    console.error(`[CRON] Failed to persist agent run for userId: ${userId}`);
-    console.error(error);
+    try {
+        await saveAgentRun(userId, result);
+    } catch (error) {
+        console.error(
+            `[CRON] Failed to persist agent run for userId: ${userId}`,
+        );
+        console.error(error);
 
-    if (errorMessage) {
-      console.error(`[CRON] Original run error: ${errorMessage}`);
+        if (errorMessage) {
+            console.error(`[CRON] Original run error: ${errorMessage}`);
+        }
     }
-  }
 }
 
 function buildErrorResult(): AgentRunSummary {
-  return {
-    emailsFound: 0,
-    summariesSent: 0,
-    status: "error",
-  };
+    return {
+        emailsFound: 0,
+        summariesSent: 0,
+        status: "error",
+    };
 }
 
-function logRunComplete(processedEmails: number) {
-  console.log(`[CRON] Run complete - ${processedEmails} emails processed`);
+function logRunComplete(summariesSent: number) {
+    console.log(`[CRON] Run complete - ${summariesSent} summaries sent`);
 }
 
 function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown agent run error.";
+    return error instanceof Error ? error.message : "Unknown agent run error.";
 }
 
 function delay(durationMs: number) {
-  return new Promise((resolve) => setTimeout(resolve, durationMs));
+    return new Promise((resolve) => setTimeout(resolve, durationMs));
 }

@@ -3,7 +3,6 @@ import { getDb } from "@/lib/db/client";
 import {
     agentRuns,
     integrations,
-    processedEmails,
     users,
     type RunStatusValue,
 } from "@/lib/db/schema";
@@ -76,6 +75,7 @@ export async function getIntegration(userId: string) {
         .select({
             accessTokenEncrypted: integrations.accessTokenEncrypted,
             refreshTokenEncrypted: integrations.refreshTokenEncrypted,
+            lastRunTimestamp: integrations.lastRunTimestamp,
             provider: integrations.provider,
         })
         .from(integrations)
@@ -98,6 +98,28 @@ export async function getUserIdsWithGmailIntegration() {
         .where(eq(integrations.provider, GMAIL_PROVIDER));
 
     return rows.map((row) => row.userId);
+}
+
+export async function updateIntegrationLastRunTimestamp(
+    userId: string,
+    lastRunTimestamp: Date,
+) {
+    const db = getDb();
+    const [integration] = await db
+        .update(integrations)
+        .set({ lastRunTimestamp })
+        .where(
+            and(
+                eq(integrations.userId, userId),
+                eq(integrations.provider, GMAIL_PROVIDER),
+            ),
+        )
+        .returning({
+            id: integrations.id,
+            lastRunTimestamp: integrations.lastRunTimestamp,
+        });
+
+    return integration ?? null;
 }
 
 export async function getRecentAgentRuns(userId: string, limit = 10) {
@@ -131,28 +153,6 @@ export async function disconnectGmailIntegration(userId: string) {
         .returning({ id: integrations.id });
 
     return deletedRows.length > 0;
-}
-
-export async function isEmailProcessed(messageId: string) {
-    const db = getDb();
-    const [processedEmail] = await db
-        .select({ messageId: processedEmails.messageId })
-        .from(processedEmails)
-        .where(eq(processedEmails.messageId, messageId))
-        .limit(1);
-
-    return Boolean(processedEmail);
-}
-
-export async function markEmailProcessed(messageId: string, userId: string) {
-    const db = getDb();
-    const [processedEmail] = await db
-        .insert(processedEmails)
-        .values({ messageId, userId })
-        .onConflictDoNothing()
-        .returning();
-
-    return processedEmail ?? null;
 }
 
 export async function saveAgentRun(userId: string, result: AgentRunResult) {
