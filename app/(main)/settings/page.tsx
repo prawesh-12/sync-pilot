@@ -11,6 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { getConnectedGmailAddress } from "@/lib/agent/gmail";
 import { disconnectGmailIntegration, getIntegration } from "@/lib/db/queries";
 
 type SettingsPageProps = {
@@ -30,6 +31,19 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
     const integration = await getIntegration(userId);
     const isConnected = Boolean(integration);
+    let connectedGmailAddress: string | null = null;
+
+    if (integration) {
+        try {
+            connectedGmailAddress = await getConnectedGmailAddress({
+                accessTokenEncrypted: integration.accessTokenEncrypted,
+                refreshTokenEncrypted: integration.refreshTokenEncrypted,
+            });
+        } catch (error) {
+            console.error("[SETTINGS] Failed to resolve connected Gmail address");
+            console.error(error);
+        }
+    }
 
     async function disconnectGoogleAction() {
         "use server";
@@ -80,6 +94,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                         </Badge>
                         <p className="text-sm text-muted-foreground">Provider: Gmail</p>
                     </div>
+
+                    {isConnected ? (
+                        <p className="text-sm text-muted-foreground">
+                            Connected account: {connectedGmailAddress || "Unable to load Gmail address"}
+                        </p>
+                    ) : null}
 
                     <div className="flex flex-wrap items-center gap-3">
                         {!isConnected ? (

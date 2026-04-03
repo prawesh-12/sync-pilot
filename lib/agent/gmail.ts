@@ -19,6 +19,11 @@ export type GmailEmail = {
     body: string;
 };
 
+type GmailIntegrationTokens = {
+    accessTokenEncrypted: string;
+    refreshTokenEncrypted: string;
+};
+
 export function createGoogleOAuthClient() {
     const config = getGoogleOAuthConfig();
 
@@ -46,6 +51,21 @@ export async function exchangeGoogleCode(code: string) {
     const { tokens } = await oauthClient.getToken(code);
 
     return tokens;
+}
+
+export async function getConnectedGmailAddress(
+    integrationTokens: GmailIntegrationTokens,
+) {
+    const oauthClient = createGoogleOAuthClient();
+    oauthClient.setCredentials({
+        access_token: decrypt(integrationTokens.accessTokenEncrypted),
+        refresh_token: decrypt(integrationTokens.refreshTokenEncrypted),
+    });
+
+    const gmail = google.gmail({ version: "v1", auth: oauthClient });
+    const profile = await gmail.users.getProfile({ userId: GMAIL_USER_ID });
+
+    return profile.data.emailAddress?.trim() || null;
 }
 
 export async function fetchEmailsInTimeWindow(userId: string, windowEnd: Date) {
