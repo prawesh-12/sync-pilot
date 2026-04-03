@@ -53,3 +53,35 @@ export function getDatabaseUrl() {
 export function isDatabaseConfigured() {
   return Boolean(getDatabaseUrl());
 }
+
+export function getGoogleOAuthConfig() {
+  const env = getEnv();
+
+  if (!env.GOOGLE_CLIENT_ID) {
+    throw new Error("GOOGLE_CLIENT_ID is not configured.");
+  }
+
+  if (!env.GOOGLE_CLIENT_SECRET) {
+    throw new Error("GOOGLE_CLIENT_SECRET is not configured.");
+  }
+
+  if (!env.GOOGLE_REDIRECT_URI) {
+    throw new Error("GOOGLE_REDIRECT_URI is not configured.");
+  }
+
+  return {
+    clientId: env.GOOGLE_CLIENT_ID,
+    clientSecret: env.GOOGLE_CLIENT_SECRET,
+    redirectUri: env.GOOGLE_REDIRECT_URI,
+  };
+}
+
+export function isGoogleOAuthConfigured() {
+  const env = getEnv();
+
+  return Boolean(
+    env.GOOGLE_CLIENT_ID &&
+      env.GOOGLE_CLIENT_SECRET &&
+      env.GOOGLE_REDIRECT_URI,
+  );
+}

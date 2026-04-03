@@ -10,15 +10,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCerebrasConfig, isCerebrasConfigured } from "@/lib/env";
+import {
+  getCerebrasConfig,
+  isCerebrasConfigured,
+  isGoogleOAuthConfigured,
+} from "@/lib/env";
 
-export default async function DashboardPage() {
+type DashboardPageProps = {
+  searchParams: Promise<{
+    gmail?: string | string[];
+  }>;
+};
+
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   const { orgId, sessionId, userId } = await auth();
+  const params = await searchParams;
   const cerebrasConfig = getCerebrasConfig();
   const cerebrasReady = isCerebrasConfigured();
+  const googleReady = isGoogleOAuthConfigured();
+  const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6">
+      {gmailStatus === "connected" ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          Gmail connected successfully. SyncPilot can now fetch unread email for
+          this account.
+        </div>
+      ) : null}
+      {gmailStatus === "failed" ? (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Gmail connection failed. Check your Google OAuth settings and try
+          again.
+        </div>
+      ) : null}
+
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
           <Badge variant="outline" className="rounded-full px-3 py-1">
@@ -41,6 +69,13 @@ export default async function DashboardPage() {
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
+            {googleReady ? (
+              <Button asChild>
+                <Link href="/api/auth/google">Connect Gmail</Link>
+              </Button>
+            ) : (
+              <Badge variant="destructive">Missing Google OAuth env</Badge>
+            )}
           </div>
         </div>
 

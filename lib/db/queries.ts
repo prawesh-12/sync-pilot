@@ -4,6 +4,7 @@ import {
   agentRuns,
   integrations,
   processedEmails,
+  users,
   type RunStatusValue,
 } from "@/lib/db/schema";
 
@@ -19,6 +20,30 @@ type AgentRunResult = {
   summariesSent: number;
   status: RunStatusValue;
 };
+
+type AppUser = {
+  id: string;
+  email: string;
+};
+
+export async function upsertUser(user: AppUser) {
+  const db = getDb();
+  const [savedUser] = await db
+    .insert(users)
+    .values({
+      id: user.id,
+      email: user.email,
+    })
+    .onConflictDoUpdate({
+      target: users.id,
+      set: {
+        email: user.email,
+      },
+    })
+    .returning();
+
+  return savedUser;
+}
 
 export async function saveIntegration(
   userId: string,
