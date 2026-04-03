@@ -114,13 +114,16 @@ export function AgentConsole({ isConfigured, modelName }: AgentConsoleProps) {
         throw new Error(data?.error || "The agent run did not succeed.");
       }
 
+      const workflowResult = data.workflow;
+      const agentResult = data.result;
+
       setHistory((current) => [
         {
           id: `${Date.now()}`,
-          workflow: data.workflow,
+          workflow: workflowResult,
           task,
           context,
-          result: data.result,
+          result: agentResult,
           usage: data.usage ?? null,
         },
         ...current,

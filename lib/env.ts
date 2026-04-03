@@ -45,3 +45,11 @@ export function getCerebrasConfig() {
 export function isCerebrasConfigured() {
   return Boolean(getEnv().CEREBRAS_API_KEY);
 }
+
+export function getDatabaseUrl() {
+  return getEnv().DATABASE_URL;
+}
+
+export function isDatabaseConfigured() {
+  return Boolean(getDatabaseUrl());
+}
