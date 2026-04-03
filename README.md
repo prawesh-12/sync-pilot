@@ -9,6 +9,7 @@ The current implementation includes:
 - Middleware-protected dashboard
 - Server-side `/api/agent/run` route
 - Structured SyncPilot agent runs using `openai/gpt-oss-120b` on Groq
+- Signal delivery helper for summary notifications via `signal-cli-rest-api`
 - Dashboard UI for inbox triage, scheduling briefs, and general operations runs
 
 ## Getting Started
@@ -34,6 +35,9 @@ Required variables:
 Optional variables:
 
 - `GROQ_MODEL` default `openai/gpt-oss-120b`
+- `SIGNAL_CLI_REST_URL`
+- `SIGNAL_SENDER_NUMBER`
+- `SIGNAL_RECIPIENT_NUMBER`
 
 3. Run the development server.
 
@@ -68,6 +72,20 @@ The route returns a structured JSON brief with:
 - `riskLevel`
 - `automationReadiness`
 - `confidence`
+
+## Signal Delivery
+
+`lib/agent/signal.ts` sends a formatted message to a reachable
+`signal-cli-rest-api` service using `POST /v1/send`.
+
+Expected environment variables:
+
+- `SIGNAL_CLI_REST_URL`
+- `SIGNAL_SENDER_NUMBER`
+- `SIGNAL_RECIPIENT_NUMBER`
+
+The helper returns `{ ok, error?, statusCode? }` so cron or orchestration code
+can log failures without crashing the whole run.
 
 ## Current Scope
 
