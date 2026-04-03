@@ -3,6 +3,8 @@ import { runAgent, type AgentRunSummary } from "@/lib/agent/run-agent";
 import { getUserIdsWithGmailIntegration } from "@/lib/db/queries";
 import { getCronSecret } from "@/lib/env";
 
+export const preferredRegion = "sin1";
+
 const UNAUTHORIZED_ERROR = "Unauthorized.";
 
 type CronRun = AgentRunSummary & {
