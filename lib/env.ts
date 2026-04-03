@@ -78,3 +78,35 @@ export function isGoogleOAuthConfigured() {
       env.GOOGLE_REDIRECT_URI,
   );
 }
+
+export function getSignalConfig() {
+  const env = getEnv();
+
+  if (!env.SIGNAL_CLI_REST_URL) {
+    throw new Error("SIGNAL_CLI_REST_URL is not configured.");
+  }
+
+  if (!env.SIGNAL_SENDER_NUMBER) {
+    throw new Error("SIGNAL_SENDER_NUMBER is not configured.");
+  }
+
+  if (!env.SIGNAL_RECIPIENT_NUMBER) {
+    throw new Error("SIGNAL_RECIPIENT_NUMBER is not configured.");
+  }
+
+  return {
+    restUrl: env.SIGNAL_CLI_REST_URL,
+    senderNumber: env.SIGNAL_SENDER_NUMBER,
+    recipientNumber: env.SIGNAL_RECIPIENT_NUMBER,
+  };
+}
+
+export function isSignalConfigured() {
+  const env = getEnv();
+
+  return Boolean(
+    env.SIGNAL_CLI_REST_URL &&
+      env.SIGNAL_SENDER_NUMBER &&
+      env.SIGNAL_RECIPIENT_NUMBER,
+  );
+}
