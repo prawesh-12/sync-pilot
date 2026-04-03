@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  getCerebrasConfig,
-  isCerebrasConfigured,
+  getGroqConfig,
   isGoogleOAuthConfigured,
+  isGroqConfigured,
 } from "@/lib/env";
 
 type DashboardPageProps = {
@@ -27,8 +27,8 @@ export default async function DashboardPage({
 }: DashboardPageProps) {
   const { orgId, sessionId, userId } = await auth();
   const params = await searchParams;
-  const cerebrasConfig = getCerebrasConfig();
-  const cerebrasReady = isCerebrasConfigured();
+  const groqConfig = getGroqConfig();
+  const groqReady = isGroqConfigured();
   const googleReady = isGoogleOAuthConfigured();
   const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
 
@@ -57,7 +57,7 @@ export default async function DashboardPage({
               The agent layer is now wired into your protected dashboard.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-              SyncPilot can now send structured operations requests to Cerebras
+              SyncPilot can now send structured operations requests to Groq
               using GPT OSS, keep the provider key on the server, and return a
               review-ready brief for human approval.
             </p>
@@ -90,12 +90,12 @@ export default async function DashboardPage({
               <p className="mt-1 text-sm text-muted-foreground">{sessionId}</p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <Mail className="size-5" />
+                <Mail className="size-5" />
               <p className="mt-3 font-medium">AI provider</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {cerebrasReady
-                  ? `${cerebrasConfig.model} via Cerebras`
-                  : "Waiting for CEREBRAS_API_KEY"}
+                {groqReady
+                  ? `${groqConfig.model} via Groq`
+                  : "Waiting for GROQ_API_KEY"}
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -116,8 +116,8 @@ export default async function DashboardPage({
       </section>
 
       <AgentConsole
-        isConfigured={cerebrasReady}
-        modelName={cerebrasConfig.model}
+        isConfigured={groqReady}
+        modelName={groqConfig.model}
       />
     </main>
   );

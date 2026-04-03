@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const syncPilotWorkflows = [
   "email_triage",
   "calendar_brief",
@@ -6,78 +8,26 @@ export const syncPilotWorkflows = [
 
 export type SyncPilotWorkflow = (typeof syncPilotWorkflows)[number];
 
-export type SyncPilotAction = {
-  action: string;
-  owner: "operator" | "automation" | "customer";
-  detail: string;
-};
+export const syncPilotActionSchema = z.object({
+  action: z.string(),
+  owner: z.enum(["operator", "automation", "customer"]),
+  detail: z.string(),
+});
 
-export type SyncPilotAgentResult = {
-  headline: string;
-  summary: string;
-  riskLevel: "low" | "medium" | "high";
-  automationReadiness: "ready" | "needs_review" | "blocked";
-  confidence: number;
-  suggestedTags: string[];
-  recommendedActions: SyncPilotAction[];
-  missingInformation: string[];
-  draftReply: string;
-};
+export const syncPilotAgentResultSchema = z.object({
+  headline: z.string(),
+  summary: z.string(),
+  riskLevel: z.enum(["low", "medium", "high"]),
+  automationReadiness: z.enum(["ready", "needs_review", "blocked"]),
+  confidence: z.number().int().min(0).max(100),
+  suggestedTags: z.array(z.string()).max(6),
+  recommendedActions: z.array(syncPilotActionSchema).min(1).max(5),
+  missingInformation: z.array(z.string()).max(5),
+  draftReply: z.string(),
+});
 
-export const syncPilotAgentSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "headline",
-    "summary",
-    "riskLevel",
-    "automationReadiness",
-    "confidence",
-    "suggestedTags",
-    "recommendedActions",
-    "missingInformation",
-    "draftReply",
-  ],
-  properties: {
-    headline: { type: "string" },
-    summary: { type: "string" },
-    riskLevel: { type: "string", enum: ["low", "medium", "high"] },
-    automationReadiness: {
-      type: "string",
-      enum: ["ready", "needs_review", "blocked"],
-    },
-    confidence: { type: "integer", minimum: 0, maximum: 100 },
-    suggestedTags: {
-      type: "array",
-      items: { type: "string" },
-      maxItems: 6,
-    },
-    recommendedActions: {
-      type: "array",
-      minItems: 1,
-      maxItems: 5,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["action", "owner", "detail"],
-        properties: {
-          action: { type: "string" },
-          owner: {
-            type: "string",
-            enum: ["operator", "automation", "customer"],
-          },
-          detail: { type: "string" },
-        },
-      },
-    },
-    missingInformation: {
-      type: "array",
-      items: { type: "string" },
-      maxItems: 5,
-    },
-    draftReply: { type: "string" },
-  },
-} as const;
+export type SyncPilotAction = z.infer<typeof syncPilotActionSchema>;
+export type SyncPilotAgentResult = z.infer<typeof syncPilotAgentResultSchema>;
 
 const workflowInstructions: Record<SyncPilotWorkflow, string> = {
   email_triage:
@@ -92,6 +42,12 @@ export function buildSyncPilotSystemPrompt(workflow: SyncPilotWorkflow) {
   return [
     "You are SyncPilot, an operations agent for a small team running email, scheduling, and execution workflows.",
     workflowInstructions[workflow],
+    "Respond with exactly one valid JSON object and no surrounding markdown or commentary.",
+    "The JSON object must include headline, summary, riskLevel, automationReadiness, confidence, suggestedTags, recommendedActions, missingInformation, and draftReply.",
+    'riskLevel must be one of: "low", "medium", "high".',
+    'automationReadiness must be one of: "ready", "needs_review", "blocked".',
+    'Each recommended action must include action, owner, and detail. owner must be "operator", "automation", or "customer".',
+    "confidence must be an integer from 0 to 100.",
     "Return only data that can be defended from the provided input.",
     "If key facts are missing, call them out in missingInformation and lower automationReadiness.",
     "Keep draftReply professional, short, and safe to send after human review.",
@@ -117,21 +73,5 @@ export function isSyncPilotWorkflow(value: unknown): value is SyncPilotWorkflow 
 export function isSyncPilotAgentResult(
   value: unknown,
 ): value is SyncPilotAgentResult {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<SyncPilotAgentResult>;
-
-  return (
-    typeof candidate.headline === "string" &&
-    typeof candidate.summary === "string" &&
-    typeof candidate.riskLevel === "string" &&
-    typeof candidate.automationReadiness === "string" &&
-    typeof candidate.confidence === "number" &&
-    Array.isArray(candidate.suggestedTags) &&
-    Array.isArray(candidate.recommendedActions) &&
-    Array.isArray(candidate.missingInformation) &&
-    typeof candidate.draftReply === "string"
-  );
+  return syncPilotAgentResultSchema.safeParse(value).success;
 }

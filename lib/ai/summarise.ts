@@ -1,5 +1,7 @@
+import { createGroq } from "@ai-sdk/groq";
+import { generateText } from "ai";
 import { z } from "zod";
-import { getCerebrasConfig, isCerebrasConfigured } from "@/lib/env";
+import { getGroqConfig, isGroqConfigured } from "@/lib/env";
 
 const SUMMARY_MAX_TOKENS = 180;
 const SUMMARY_TEMPERATURE = 0.2;
@@ -13,18 +15,6 @@ const emailContentSchema = z.object({
   subject: z.string().trim().min(1),
   from: z.string().trim().min(1),
   body: z.string().trim().min(1),
-});
-
-const cerebrasResponseSchema = z.object({
-  choices: z
-    .array(
-      z.object({
-        message: z.object({
-          content: z.string().trim().min(1),
-        }),
-      }),
-    )
-    .min(1),
 });
 
 type EmailContent = z.infer<typeof emailContentSchema>;
@@ -43,55 +33,23 @@ function buildSummaryPrompt(emailContent: EmailContent) {
 }
 
 export async function summariseEmail(emailContent: EmailContent): Promise<string> {
-  if (!isCerebrasConfigured()) {
-    throw new Error("CEREBRAS_API_KEY is not configured.");
+  if (!isGroqConfigured()) {
+    throw new Error("GROQ_API_KEY is not configured.");
   }
 
   const parsedEmailContent = emailContentSchema.parse(emailContent);
-  const config = getCerebrasConfig();
-  const response = await fetch(`${config.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        {
-          role: "user",
-          content: buildSummaryPrompt(parsedEmailContent),
-        },
-      ],
-      max_tokens: SUMMARY_MAX_TOKENS,
-      temperature: SUMMARY_TEMPERATURE,
-    }),
-    cache: "no-store",
+  const config = getGroqConfig();
+  const groq = createGroq({
+    apiKey: config.apiKey,
   });
-  const data = (await response.json().catch(() => null)) as unknown;
+  const result = await generateText({
+    model: groq(config.model),
+    prompt: buildSummaryPrompt(parsedEmailContent),
+    temperature: SUMMARY_TEMPERATURE,
+    maxOutputTokens: SUMMARY_MAX_TOKENS,
+  });
 
-  if (!response.ok) {
-    const errorMessage =
-      data && typeof data === "object" && "error" in data
-        ? getApiErrorMessage(data.error)
-        : "";
-
-    throw new Error(
-      errorMessage || `Cerebras request failed with status ${response.status}.`,
-    );
-  }
-
-  const parsedResponse = cerebrasResponseSchema.parse(data);
-
-  return parsedResponse.choices[0].message.content;
-}
-
-function getApiErrorMessage(error: unknown) {
-  if (!error || typeof error !== "object" || !("message" in error)) {
-    return "";
-  }
-
-  return typeof error.message === "string" ? error.message : "";
+  return result.text;
 }
 
 function getSummaryBody(body: string) {

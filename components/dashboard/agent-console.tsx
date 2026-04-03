@@ -76,7 +76,7 @@ export function AgentConsole({ isConfigured, modelName }: AgentConsoleProps) {
     event.preventDefault();
 
     if (!isConfigured) {
-      setError("Add CEREBRAS_API_KEY before running the agent.");
+      setError("Add GROQ_API_KEY before running the agent.");
       return;
     }
 
@@ -141,7 +141,7 @@ export function AgentConsole({ isConfigured, modelName }: AgentConsoleProps) {
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={isConfigured ? "default" : "destructive"}>
-              {isConfigured ? "Cerebras connected" : "Missing API key"}
+              {isConfigured ? "Groq connected" : "Missing API key"}
             </Badge>
             <Badge variant="outline">{modelName}</Badge>
           </div>

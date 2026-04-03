@@ -19,7 +19,7 @@ export default async function Home() {
         <section className="space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium uppercase tracking-[0.28em] text-muted-foreground">
             <Sparkles className="size-3.5" />
-            Clerk auth + Cerebras agent
+            Clerk auth + Groq agent
           </div>
 
           <div className="space-y-5">
@@ -28,7 +28,7 @@ export default async function Home() {
             </h1>
             <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               SyncPilot now ships with Clerk-backed auth and a protected agent
-              console that can send structured operations requests to Cerebras
+              console that can send structured operations requests to Groq
               using GPT OSS. Start with inbox triage, scheduling briefs, and
               operator review loops.
             </p>
@@ -118,7 +118,7 @@ export default async function Home() {
               <p className="mt-2 font-medium">Run the protected agent console</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Authenticated users land on `/dashboard` and can trigger a
-                Cerebras-backed SyncPilot run.
+                Groq-backed SyncPilot run.
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-muted/40 p-4">

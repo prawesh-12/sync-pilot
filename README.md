@@ -1,14 +1,14 @@
 ## SyncPilot
 
 SyncPilot is a protected Next.js operator console with Clerk authentication and
-an AI action panel backed by Cerebras' OpenAI-compatible inference API.
+an AI action panel backed by Groq.
 
 The current implementation includes:
 
 - Public landing page plus Clerk sign-in and sign-up routes
 - Middleware-protected dashboard
 - Server-side `/api/agent/run` route
-- Structured SyncPilot agent runs using `gpt-oss-120b` on Cerebras
+- Structured SyncPilot agent runs using `openai/gpt-oss-120b` on Groq
 - Dashboard UI for inbox triage, scheduling briefs, and general operations runs
 
 ## Getting Started
@@ -16,7 +16,7 @@ The current implementation includes:
 1. Install dependencies.
 
 ```bash
-npm install
+bun install
 ```
 
 2. Copy `.env.example` to `.env.local` and fill in your keys:
@@ -29,17 +29,16 @@ Required variables:
 
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
-- `CEREBRAS_API_KEY`
+- `GROQ_API_KEY`
 
 Optional variables:
 
-- `CEREBRAS_MODEL` default `gpt-oss-120b`
-- `CEREBRAS_BASE_URL` default `https://api.cerebras.ai/v1`
+- `GROQ_MODEL` default `openai/gpt-oss-120b`
 
 3. Run the development server.
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 4. Open `http://localhost:3000`, create an account, and go to `/dashboard`.
@@ -85,6 +84,4 @@ Those are the next logical slices after the provider-backed agent path is stable
 
 - Next.js App Router
 - Clerk Next.js SDK
-- Cerebras Inference API with OpenAI-compatible chat completions
-
-Official Cerebras docs: https://inference-docs.cerebras.ai/
+- Groq API
