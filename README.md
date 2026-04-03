@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## SyncPilot
+
+SyncPilot is a protected Next.js operator console with Clerk authentication and
+an AI action panel backed by Cerebras' OpenAI-compatible inference API.
+
+The current implementation includes:
+
+- Public landing page plus Clerk sign-in and sign-up routes
+- Middleware-protected dashboard
+- Server-side `/api/agent/run` route
+- Structured SyncPilot agent runs using `gpt-oss-120b` on Cerebras
+- Dashboard UI for inbox triage, scheduling briefs, and general operations runs
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies.
+
+```bash
+npm install
+```
+
+2. Copy `.env.example` to `.env.local` and fill in your keys:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `CEREBRAS_API_KEY`
+
+Optional variables:
+
+- `CEREBRAS_MODEL` default `gpt-oss-120b`
+- `CEREBRAS_BASE_URL` default `https://api.cerebras.ai/v1`
+
+3. Run the development server.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open `http://localhost:3000`, create an account, and go to `/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## AI Route
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`POST /api/agent/run`
 
-## Learn More
+Authenticated route that accepts:
 
-To learn more about Next.js, take a look at the following resources:
+```json
+{
+  "workflow": "operations_copilot",
+  "task": "Summarize this vendor thread and recommend the next steps.",
+  "context": "Raw notes, email thread, or scheduling context"
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The route returns a structured JSON brief with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `headline`
+- `summary`
+- `recommendedActions`
+- `suggestedTags`
+- `draftReply`
+- `missingInformation`
+- `riskLevel`
+- `automationReadiness`
+- `confidence`
 
-## Deploy on Vercel
+## Current Scope
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This repo does not yet implement:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Google Calendar or Gmail API integrations
+- Drizzle ORM models or persisted task runs
+- Webhook ingestion
+- Cron-driven autonomous runs
+
+Those are the next logical slices after the provider-backed agent path is stable.
+
+## References
+
+- Next.js App Router
+- Clerk Next.js SDK
+- Cerebras Inference API with OpenAI-compatible chat completions
+
+Official Cerebras docs: https://inference-docs.cerebras.ai/
