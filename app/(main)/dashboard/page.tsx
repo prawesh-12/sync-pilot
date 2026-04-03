@@ -1,20 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Mail, ShieldCheck } from "lucide-react";
-import { AgentConsole } from "@/components/dashboard/agent-console";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  getGroqConfig,
-  isGoogleOAuthConfigured,
-  isGroqConfigured,
-} from "@/lib/env";
+import { getIntegration, getRecentAgentRuns } from "@/lib/db/queries";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -26,104 +22,116 @@ type DashboardPageProps = {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const { orgId, sessionId, userId } = await auth();
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
   const params = await searchParams;
-  const groqConfig = getGroqConfig();
-  const groqReady = isGroqConfigured();
-  const googleReady = isGoogleOAuthConfigured();
+  const integration = await getIntegration(userId);
+  const recentRuns = await getRecentAgentRuns(userId, 10);
+  const isConnected = Boolean(integration);
   const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
   const gmailError = Array.isArray(params.gmailError)
     ? params.gmailError[0]
     : params.gmailError;
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6">
+    <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-5xl flex-col gap-6 px-4 py-10 sm:px-6">
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Monitor Gmail connection status and recent SyncPilot runs.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/settings">Open settings</Link>
+        </Button>
+      </section>
+
       {gmailStatus === "connected" ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-          Gmail connected successfully. SyncPilot can now fetch unread email for
-          this account.
+          Gmail connected successfully.
         </div>
       ) : null}
       {gmailStatus === "failed" ? (
         <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Gmail connection failed. Check your Google OAuth settings and try
-          again.
+          Gmail connection failed. Check your Google OAuth settings and try again.
           {gmailError ? ` Reason: ${gmailError}` : ""}
         </div>
       ) : null}
 
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-5">
-          <Badge variant="outline" className="rounded-full px-3 py-1">
-            Authenticated operator workspace
-          </Badge>
-          <div className="space-y-3">
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">
-              The agent layer is now wired into your protected dashboard.
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-              SyncPilot can now send structured operations requests to Groq
-              using GPT OSS, keep the provider key on the server, and return a
-              review-ready brief for human approval.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button asChild variant="outline">
-              <Link href="/">
-                Back home
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            {googleReady ? (
-              <Button asChild>
-                <Link href="/api/auth/google">Connect Gmail</Link>
-              </Button>
-            ) : (
-              <Badge variant="destructive">Missing Google OAuth env</Badge>
-            )}
-          </div>
-        </div>
-
-        <Card className="border-border/80 bg-card/80 shadow-2xl shadow-black/10">
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Card className="border-border/80 bg-card/80">
           <CardHeader>
-            <CardTitle>Runtime status</CardTitle>
+            <CardTitle>Google integration</CardTitle>
+            <CardDescription>Connect Gmail to enable unread email processing.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <ShieldCheck className="size-5" />
-              <p className="mt-3 font-medium">Auth session</p>
-              <p className="mt-1 text-sm text-muted-foreground">{sessionId}</p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant={isConnected ? "default" : "outline"}>
+                {isConnected ? "Connected" : "Not connected"}
+              </Badge>
+              <p className="text-sm text-muted-foreground">Provider: Gmail</p>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                <Mail className="size-5" />
-              <p className="mt-3 font-medium">AI provider</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {groqReady
-                  ? `${groqConfig.model} via Groq`
-                  : "Waiting for GROQ_API_KEY"}
+
+            {isConnected ? (
+              <p className="text-sm text-muted-foreground">
+                Your Google account is linked. Cron jobs can now fetch unread emails.
               </p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <CalendarDays className="size-5" />
-              <p className="mt-3 font-medium">Active organization</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {orgId ?? "No organization set"}
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Connect your Google account to start the email summary pipeline.
               </p>
-            </div>
-            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                User ID
+            )}
+
+            {!isConnected ? (
+              <Button asChild>
+                <Link href="/api/auth/google">Connect Google Account</Link>
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/80">
+          <CardHeader>
+            <CardTitle>Last 10 runs</CardTitle>
+            <CardDescription>
+              Most recent agent executions from the audit log.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentRuns.length ? (
+              <div className="space-y-3">
+                {recentRuns.map((run) => (
+                  <div
+                    key={run.id}
+                    className="rounded-xl border border-border/70 bg-muted/30 px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium">
+                        {new Date(run.ranAt).toLocaleString()}
+                      </p>
+                      <Badge variant={run.status === "success" ? "default" : "destructive"}>
+                        {run.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Emails found: {run.emailsFound} • Summaries sent: {run.summariesSent}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border/70 px-3 py-6 text-center text-sm text-muted-foreground">
+                No agent runs yet.
               </p>
-              <p className="mt-3 text-sm text-muted-foreground">{userId}</p>
-            </div>
+            )}
           </CardContent>
         </Card>
       </section>
-
-      <AgentConsole
-        isConfigured={groqReady}
-        modelName={groqConfig.model}
-      />
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
     agentRuns,
@@ -98,6 +98,39 @@ export async function getUserIdsWithGmailIntegration() {
         .where(eq(integrations.provider, GMAIL_PROVIDER));
 
     return rows.map((row) => row.userId);
+}
+
+export async function getRecentAgentRuns(userId: string, limit = 10) {
+    const db = getDb();
+    const safeLimit = Math.min(Math.max(limit, 1), 50);
+
+    return db
+        .select({
+            id: agentRuns.id,
+            ranAt: agentRuns.ranAt,
+            emailsFound: agentRuns.emailsFound,
+            summariesSent: agentRuns.summariesSent,
+            status: agentRuns.status,
+        })
+        .from(agentRuns)
+        .where(eq(agentRuns.userId, userId))
+        .orderBy(desc(agentRuns.ranAt))
+        .limit(safeLimit);
+}
+
+export async function disconnectGmailIntegration(userId: string) {
+    const db = getDb();
+    const deletedRows = await db
+        .delete(integrations)
+        .where(
+            and(
+                eq(integrations.userId, userId),
+                eq(integrations.provider, GMAIL_PROVIDER),
+            ),
+        )
+        .returning({ id: integrations.id });
+
+    return deletedRows.length > 0;
 }
 
 export async function isEmailProcessed(messageId: string) {
