@@ -45,3 +45,6 @@ next-env.d.ts
 
 # extras
 extras
+
+# signal
+signal-cli-config/signal-cli-config

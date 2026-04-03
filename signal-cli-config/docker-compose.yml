@@ -1,0 +1,12 @@
+# add the latest one from: https://github.com/bbernhard/signal-cli-rest-api
+services:
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:0.98
+    container_name: signal-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MODE: native
+    volumes:
+      - ./signal-cli-config:/home/.local/share/signal-cli

@@ -76,7 +76,7 @@ The route returns a structured JSON brief with:
 ## Signal Delivery
 
 `lib/agent/signal.ts` sends a formatted message to a reachable
-`signal-cli-rest-api` service using `POST /v1/send`.
+`signal-cli-rest-api` service using `POST /v2/send`.
 
 Expected environment variables:
 

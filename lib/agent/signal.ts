@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getSignalConfig, isSignalConfigured } from "@/lib/env";
 
 const SIGNAL_MESSAGE_TITLE = "New Email Summary";
-const SIGNAL_SEND_PATH = "v1/send";
+const SIGNAL_SEND_PATH = "v2/send";
 const SIGNAL_REQUEST_TIMEOUT_MS = 10_000;
 
 const signalMessageSchema = z.object({
