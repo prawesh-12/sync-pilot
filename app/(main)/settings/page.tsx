@@ -189,15 +189,15 @@ export default async function SettingsPage({
     ) : null;
 
     const settingsCard = (
-        <EmailIntegrationCard 
-            isConnected={isConnected} 
-            integration={integration} 
-            disconnectAction={disconnectGoogleAction} 
+        <EmailIntegrationCard
+            isConnected={isConnected}
+            integration={integration}
+            disconnectAction={disconnectGoogleAction}
         />
     );
 
     const signalCard = (
-        <SignalIntegrationCard 
+        <SignalIntegrationCard
             signalDeviceName={signalDeviceName}
             isSignalConnected={isSignalConnected}
             isSignalServiceConfigured={isSignalServiceConfigured}
@@ -222,7 +222,7 @@ export default async function SettingsPage({
 
     if (variant === "popup") {
         return (
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10 sm:px-6">
+            <div className="mx-auto flex max-h-[90dvh] w-full flex-col gap-6 overflow-y-auto px-4 pt-10 pb-10 sm:max-h-none sm:max-w-4xl sm:overflow-visible sm:px-6 sm:py-10">
                 {disconnectedBanner}
                 {signalSavedBanner}
                 {signalDisconnectedBanner}

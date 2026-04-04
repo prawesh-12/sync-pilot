@@ -26,7 +26,7 @@ export default function RootLayout({
           <Navbar />
           {children}
           <footer className="border-t border-[#A089E6]/10 bg-[#07070f]/90 py-3 text-center text-xs text-gray-600">
-            © {new Date().getFullYear()} SyncPilot AI · Built with Next.js · Clerk · Groq · Signal
+            © {new Date().getFullYear()} SyncPilot AI
           </footer>
         </ClerkProvider>
       </body>

@@ -16,20 +16,20 @@ type EmailIntegrationCardProps = {
 export function EmailIntegrationCard({ isConnected, integration, disconnectAction }: EmailIntegrationCardProps) {
     return (
         <Card className="border-emerald-500/20 bg-emerald-500/3">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="space-y-1">
                     <CardTitle className="text-base">Email Integration</CardTitle>
                 </div>
 
                 {isConnected && integration ? (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="default">Connected</Badge> 
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="default">Connected</Badge>
                         <Suspense fallback={<Skeleton width="150px" height="20px" />}>
                             <ConnectedEmailDetails integration={integration} />
                         </Suspense>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">Not connected</Badge>
                     </div>
                 )}
@@ -41,8 +41,8 @@ export function EmailIntegrationCard({ isConnected, integration, disconnectActio
                             <Link href="/api/auth/google">Connect Google Account</Link>
                         </Button>
                     ) : (
-                        <form action={disconnectAction}>
-                            <Button type="submit" variant="destructive">
+                        <form action={disconnectAction} className="w-full sm:w-auto">
+                            <Button type="submit" variant="destructive" className="w-full sm:w-auto">
                                 Disconnect Email
                             </Button>
                         </form>

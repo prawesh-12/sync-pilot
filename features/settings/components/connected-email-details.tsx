@@ -13,5 +13,5 @@ export async function ConnectedEmailDetails({ integration }: { integration: NonN
         console.error(error);
     }
 
-    return <span>{email || "Unable to load Gmail address"}</span>;
+    return <span className="text-sm text-muted-foreground break-all">{email || "Unable to load Gmail address"}</span>;
 }

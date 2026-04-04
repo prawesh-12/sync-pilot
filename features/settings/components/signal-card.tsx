@@ -25,7 +25,7 @@ export function SignalIntegrationCard({
 }: SignalIntegrationCardProps) {
     return (
         <Card className="border-[#A089E6]/30 bg-[#A089E6]/3">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="space-y-2">
                     <CardTitle className="text-base">Signal Integration</CardTitle>
                     <p className="text-xs text-muted-foreground">
@@ -34,11 +34,11 @@ export function SignalIntegrationCard({
                 </div>
 
                 {isSignalConnected ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="default">Connected</Badge>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">Not connected</Badge>
                     </div>
                 )}
@@ -54,7 +54,7 @@ export function SignalIntegrationCard({
                 )}
 
                 <form action={saveAction} className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                             <label
                                 htmlFor="senderNumber"
@@ -89,13 +89,13 @@ export function SignalIntegrationCard({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <Button type="submit">Save Signal Numbers</Button>
+                        <Button type="submit" className="w-full sm:w-auto">Save Signal Numbers</Button>
                     </div>
                 </form>
 
                 {isSignalConnected ? (
-                    <form action={disconnectAction}>
-                        <Button type="submit" variant="destructive">
+                    <form action={disconnectAction} className="w-full sm:w-auto">
+                        <Button type="submit" variant="destructive" className="w-full sm:w-auto">
                             Disconnect Signal
                         </Button>
                     </form>

@@ -39,12 +39,12 @@ export default async function DashboardPage({
   const isSettingsOpen = settingsParam === "open";
 
   return (
-    <main className="relative flex-1 bg-[#07070f] text-white flex flex-col overflow-hidden">
+    <main className="relative flex w-full flex-1 flex-col overflow-x-hidden bg-[#07070f] text-white sm:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,#271A58_0%,transparent_70%)] opacity-60" />
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(#A089E620_1px,transparent_1px)] bg-size-[24px_24px]" />
 
-      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-4 flex flex-col h-full overflow-hidden">
-        <section className="shrink-0 mb-4 flex items-end justify-between gap-4">
+      <div className="relative z-10 flex w-full flex-col px-4 py-4 pb-20 sm:mx-auto sm:h-full sm:max-w-5xl sm:overflow-hidden sm:px-6 sm:pb-4">
+        <section className="mb-4 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Dashboard</h1>
             <p className="mt-0.5 text-sm text-gray-400">
@@ -53,7 +53,7 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/dashboard?settings=open"
-            className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-[#07070f] transition-colors hover:bg-white"
+            className="w-full shrink-0 rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] transition-colors hover:bg-white sm:w-auto"
           >
             Connection Setting
           </Link>
@@ -71,8 +71,8 @@ export default async function DashboardPage({
           </div>
         ) : null}
 
-        <section className="flex flex-col gap-4 flex-1 min-h-0">
-          <div className="shrink-0 flex items-center justify-between gap-4 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-5 py-3">
+        <section className="flex flex-col gap-4 sm:flex-1 sm:min-h-0">
+          <div className="shrink-0 flex flex-col gap-2 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3">
             <div>
               <h2 className="text-lg font-semibold text-white">Integration</h2>
               {isConnected ? (
@@ -88,8 +88,8 @@ export default async function DashboardPage({
             <span
               className={
                 isConnected
-                  ? "shrink-0 rounded-lg border border-[#A089E6]/30 bg-[#A089E6]/15 px-3 py-1 text-xs text-[#A089E6]"
-                  : "shrink-0 rounded-lg border border-white/10 bg-white/3 px-3 py-1 text-xs text-gray-400"
+                  ? "self-start shrink-0 rounded-lg border border-[#A089E6]/30 bg-[#A089E6]/15 px-3 py-1 text-xs text-[#A089E6] sm:self-auto"
+                  : "self-start shrink-0 rounded-lg border border-white/10 bg-white/3 px-3 py-1 text-xs text-gray-400 sm:self-auto"
               }
             >
               {isConnected ? "Connected" : "Not connected"}
@@ -103,13 +103,13 @@ export default async function DashboardPage({
             </div>
 
             {recentRuns.length ? (
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-2 content-start">
+              <div className="mt-4 grid grid-cols-1 content-start gap-4 sm:grid-cols-2 sm:overflow-y-auto sm:pb-2 sm:pr-2">
                 {recentRuns.map((run) => (
                   <div
                     key={run.id}
                     className="rounded-xl border border-[#A089E6]/10 bg-white/3 px-3 py-2"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                       <p className="text-sm font-medium text-white">
                         {new Date(run.ranAt).toLocaleString()}
                       </p>
@@ -123,7 +123,13 @@ export default async function DashboardPage({
                         {run.status}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className="mt-0.5 text-xs text-gray-500 sm:hidden">
+                      Emails found: {run.emailsFound}
+                    </p>
+                    <p className="text-xs text-gray-500 sm:hidden">
+                      Summaries sent: {run.summariesSent}
+                    </p>
+                    <p className="mt-0.5 hidden text-xs text-gray-500 sm:block">
                       Emails found: {run.emailsFound} • Summaries sent: {run.summariesSent}
                     </p>
                   </div>
@@ -139,8 +145,8 @@ export default async function DashboardPage({
       </div>
 
       {isSettingsOpen ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative h-auto max-h-[85vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-[#A089E6]/20 bg-[#07070f] shadow-2xl">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4">
+          <div className="relative h-full w-full overflow-y-hidden rounded-none border border-[#A089E6]/20 bg-[#07070f] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-5xl sm:overflow-y-auto sm:rounded-2xl">
             <Link
               href="/dashboard"
               className="absolute right-4 top-4 z-10 rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
