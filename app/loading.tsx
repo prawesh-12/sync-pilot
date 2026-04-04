@@ -18,7 +18,7 @@ export default function HomeLoading() {
             <div className="relative z-10 flex h-full flex-col">
                 <section className="flex flex-1 flex-col">
                     <div className="flex flex-1 flex-col justify-center gap-6 px-6 py-4 md:gap-7 md:px-12">
-                        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-5 text-center">
+                        <div className="mx-auto mt-8 flex w-full max-w-4xl flex-col items-center gap-5 text-center md:mt-10">
                             <Skeleton width="170px" height="28px" rounded="rounded-full" />
 
                             <div className="space-y-3">
@@ -34,7 +34,7 @@ export default function HomeLoading() {
                             <Skeleton width="150px" height="40px" rounded="rounded-full" />
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 px-2 md:grid-cols-3 md:px-4">
+                        <div className="mt-2 grid grid-cols-1 gap-4 px-2 md:mt-3 md:grid-cols-3 md:px-4">
                             {Array.from({ length: 3 }).map((_, index) => (
                                 <article
                                     key={index}

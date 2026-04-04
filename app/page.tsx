@@ -19,7 +19,7 @@ export default function Home() {
       <div className="relative z-10 flex h-full flex-col">
         <section className="flex flex-1 flex-col">
           <div className="flex flex-1 flex-col justify-center gap-6 px-6 py-4 md:gap-7 md:px-12">
-            <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-5 text-center">
+            <div className="mx-auto mt-8 flex w-full max-w-4xl flex-col items-center gap-5 text-center md:mt-10">
               <p className="mx-auto flex w-fit items-center gap-1 rounded-full border border-[#A089E6]/30 bg-[#A089E6]/10 px-4 py-1 text-xs text-[#A089E6]">
                 <Brain /> Powered by Groq LLM
               </p>
@@ -61,7 +61,7 @@ export default function Home() {
 
             <div
               id="how-it-works"
-              className="grid grid-cols-1 gap-4 px-2 md:grid-cols-3 md:px-4"
+              className="mt-2 grid grid-cols-1 gap-4 px-2 md:mt-3 md:grid-cols-3 md:px-4"
             >
               <article className="flex flex-col gap-2 rounded-2xl border border-[#A089E6]/15 bg-white/4 p-5 transition-all hover:border-[#A089E6]/40">
                 <div className="w-fit rounded-lg bg-[#A089E6]/10 p-1.5 text-[#A089E6]">
