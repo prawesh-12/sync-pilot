@@ -40,76 +40,75 @@ export default async function DashboardPage({
   const isSettingsOpen = settingsParam === "open";
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#07070f] text-white">
+    <main className="relative flex-1 bg-[#07070f] text-white flex flex-col overflow-hidden">
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,#271A58_0%,transparent_70%)] opacity-60" />
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(#A089E620_1px,transparent_1px)] bg-size-[24px_24px]" />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-10">
-        <section className="mb-8 flex items-end justify-between gap-4">
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-4 flex flex-col h-full overflow-hidden">
+        <section className="shrink-0 mb-4 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <p className="mt-0.5 text-sm text-gray-400">
               Monitor Gmail connection status and recent SyncPilot runs.
             </p>
           </div>
           <Link
             href="/dashboard?settings=open"
-            className="rounded-full border border-[#A089E6]/30 px-5 py-1.5 text-sm text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
+            className="rounded-full border border-[#A089E6]/30 px-4 py-1 text-sm text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
           >
             Connection Setting
           </Link>
         </section>
 
         {gmailStatus === "connected" ? (
-          <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="shrink-0 mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-100">
             Gmail connected successfully.
           </div>
         ) : null}
         {gmailStatus === "failed" ? (
-          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <div className="shrink-0 mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             Gmail connection failed. Check your Google OAuth settings and try again.
             {gmailError ? ` Reason: ${gmailError}` : ""}
           </div>
         ) : null}
 
-        <section className="space-y-6">
-          <div className="rounded-2xl border border-[#A089E6]/15 bg-white/4 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold text-white">Integration</h2>
-              </div>
-              <span
-                className={
-                  isConnected
-                    ? "rounded-lg border border-[#A089E6]/30 bg-[#A089E6]/15 px-4 py-1 text-sm text-[#A089E6]"
-                    : "rounded-lg border border-white/10 bg-white/3 px-4 py-1 text-sm text-gray-400"
-                }
-              >
-                {isConnected ? "Connected" : "Not connected"}
-              </span>
+        <section className="flex flex-col gap-4 flex-1 min-h-0">
+          <div className="shrink-0 flex items-center justify-between gap-4 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-5 py-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Integration</h2>
+              {isConnected ? (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Your Google account is linked. Cron jobs can now fetch unread emails.
+                </p>
+              ) : (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Connect your Google account to start the email summary pipeline.
+                </p>
+              )}
             </div>
-
-            {isConnected ? (
-              <p className="mt-3 text-sm text-gray-400">
-                Your Google account is linked. Cron jobs can now fetch unread emails.
-              </p>
-            ) : (
-              <p className="mt-3 text-sm text-gray-400">
-                Connect your Google account to start the email summary pipeline.
-              </p>
-            )}
+            <span
+              className={
+                isConnected
+                  ? "shrink-0 rounded-lg border border-[#A089E6]/30 bg-[#A089E6]/15 px-3 py-1 text-xs text-[#A089E6]"
+                  : "shrink-0 rounded-lg border border-white/10 bg-white/3 px-3 py-1 text-xs text-gray-400"
+              }
+            >
+              {isConnected ? "Connected" : "Not connected"}
+            </span>
           </div>
 
-          <div className="mx-auto w-full max-w-md rounded-2xl border border-[#A089E6]/15 bg-white/4 p-6">
-            <h2 className="text-lg font-semibold text-white">Last 10 Runs</h2>
-            <p className="mt-1 text-sm text-gray-400">Most recent agent executions.</p>
+          <div className="flex flex-col w-full rounded-2xl border border-[#A089E6]/15 bg-white/4 p-4">
+            <div className="shrink-0">
+              <h2 className="text-lg font-semibold text-white">Last 10 Runs</h2>
+              <p className="mt-0.5 text-xs text-gray-400">Most recent agent executions.</p>
+            </div>
 
             {recentRuns.length ? (
-              <div className="mt-4">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-2 content-start">
                 {recentRuns.map((run) => (
                   <div
                     key={run.id}
-                    className="mb-2 rounded-xl border border-[#A089E6]/10 bg-white/3 px-3 py-2 last:mb-0"
+                    className="rounded-xl border border-[#A089E6]/10 bg-white/3 px-3 py-2"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-medium text-white">
@@ -132,7 +131,7 @@ export default async function DashboardPage({
                 ))}
               </div>
             ) : (
-              <p className="mt-4 rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-gray-600">
+              <p className="mt-4 shrink-0 rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-gray-600">
                 No agent runs yet.
               </p>
             )}
