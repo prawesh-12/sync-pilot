@@ -1,12 +1,12 @@
 import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
+import { getDb } from "@/db/client";
 import {
     agentRuns,
     integrations,
     signalIntegrations,
     users,
     type RunStatusValue,
-} from "@/lib/db/schema";
+} from "@/db/schema";
 
 const GMAIL_PROVIDER = "gmail";
 

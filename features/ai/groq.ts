@@ -1,6 +1,6 @@
 import { createGroq } from "@ai-sdk/groq";
 import { generateText } from "ai";
-import { getGroqConfig, isGroqConfigured } from "@/lib/env";
+import { getGroqConfig, isGroqConfigured } from "@/config/env";
 
 type TextCompletionParams = {
   system: string;

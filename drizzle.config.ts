@@ -1,6 +1,6 @@
 import { config as loadEnv } from "dotenv";
 import { defineConfig } from "drizzle-kit";
-import { getDatabaseUrl } from "./lib/env";
+import { getDatabaseUrl } from "./config/env";
 
 loadEnv({ path: ".env.local" });
 loadEnv();

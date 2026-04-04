@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { runAgent, type AgentRunSummary } from "@/lib/agent/run-agent";
+import { runAgent, type AgentRunSummary } from "@/features/agent/run-agent";
 import {
     getUserIdsWithGmailIntegration,
     getUserIdsWithSignalIntegration,
-} from "@/lib/db/queries";
-import { getCronSecret } from "@/lib/env";
+} from "@/db/queries";
+import { getCronSecret } from "@/config/env";
 
 export const preferredRegion = "sin1";
 

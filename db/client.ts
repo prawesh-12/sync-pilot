@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { getDatabaseUrl } from "@/lib/env";
-import * as schema from "@/lib/db/schema";
+import { getDatabaseUrl } from "@/config/env";
+import * as schema from "@/db/schema";
 
 const MAX_DATABASE_CONNECTIONS = 10;
 const DATABASE_IDLE_TIMEOUT_SECONDS = 20;

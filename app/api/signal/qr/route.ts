@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { buildSignalDeviceName, getSignalQrCodeLink } from "@/lib/agent/signal";
-import { getSignalIntegration } from "@/lib/db/queries";
+import { buildSignalDeviceName, getSignalQrCodeLink } from "@/features/signal/signal";
+import { getSignalIntegration } from "@/db/queries";
 
 const SIGNAL_QR_TIMEOUT_MS = 15_000;
 

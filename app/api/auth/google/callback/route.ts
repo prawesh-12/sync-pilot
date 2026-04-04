@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { exchangeGoogleCode } from "@/lib/agent/gmail";
-import { getIntegration, saveIntegration, upsertUser } from "@/lib/db/queries";
+import { exchangeGoogleCode } from "@/features/gmail/gmail";
+import { getIntegration, saveIntegration, upsertUser } from "@/db/queries";
 import { encrypt } from "@/lib/encryption";
 
 const GMAIL_CONNECTED_STATUS = "connected";

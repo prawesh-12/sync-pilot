@@ -1,10 +1,10 @@
-import { fetchEmailsInTimeWindow, type GmailEmail } from "@/lib/agent/gmail";
-import { sendSignalMessage } from "@/lib/agent/signal";
-import { summariseEmail } from "@/lib/ai/summarise";
+import { fetchEmailsInTimeWindow, type GmailEmail } from "@/features/gmail/gmail";
+import { sendSignalMessage } from "@/features/signal/signal";
+import { summariseEmail } from "@/features/ai/summarise";
 import {
     saveAgentRun,
     updateIntegrationLastRunTimestamp,
-} from "@/lib/db/queries";
+} from "@/db/queries";
 
 const EMAIL_PROCESS_DELAY_MS = 500;
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { getSignalIntegration } from "@/lib/db/queries";
-import { getSignalConfig, isSignalConfigured } from "@/lib/env";
+import { getSignalIntegration } from "@/db/queries";
+import { getSignalConfig, isSignalConfigured } from "@/config/env";
 
 const SIGNAL_MESSAGE_TITLE = "New Email Summary";
 const SIGNAL_SEND_PATH = "v2/send";

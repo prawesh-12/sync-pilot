@@ -1,7 +1,7 @@
 import { createGroq } from "@ai-sdk/groq";
 import { generateText } from "ai";
 import { z } from "zod";
-import { getGroqConfig, isGroqConfigured } from "@/lib/env";
+import { getGroqConfig, isGroqConfigured } from "@/config/env";
 
 const SUMMARY_MAX_TOKENS = 180;
 const SUMMARY_TEMPERATURE = 0.2;

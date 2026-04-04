@@ -17,9 +17,10 @@ import { Input } from "@/components/ui/input";
 import { SignalQrModal } from "@/components/dashboard/signal-qr-modal";
 import {
     buildSignalDeviceName,
-} from "@/lib/agent/signal";
-import { isSignalConfigured } from "@/lib/env";
-import { getConnectedGmailAddress } from "@/lib/agent/gmail";
+} from "@/features/signal/signal";
+import { isSignalConfigured } from "@/config/env";
+import { EmailIntegrationCard } from "@/features/settings/components/email-card";
+import { SignalIntegrationCard } from "@/features/settings/components/signal-card";
 import {
     disconnectGmailIntegration,
     disconnectSignalIntegration,
@@ -27,7 +28,7 @@ import {
     getSignalIntegration,
     upsertSignalIntegration,
     upsertUser,
-} from "@/lib/db/queries";
+} from "@/db/queries";
 
 const PHONE_NUMBER_PATTERN = /^\+\d{8,15}$/;
 
@@ -188,122 +189,23 @@ export default async function SettingsPage({
     ) : null;
 
     const settingsCard = (
-        <Card className="border-emerald-500/20 bg-emerald-500/3">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div className="space-y-1">
-                    <CardTitle className="text-base">Email Integration</CardTitle>
-                </div>
-
-                {isConnected && integration ? (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="default">Connected</Badge> 
-                        <Suspense fallback={<Skeleton width="150px" height="20px" />}>
-                            <ConnectedEmailDetails integration={integration} />
-                        </Suspense>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline">Not connected</Badge>
-                    </div>
-                )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    {!isConnected ? (
-                        <Button asChild>
-                            <Link href="/api/auth/google">Connect Google Account</Link>
-                        </Button>
-                    ) : (
-                        <form action={disconnectGoogleAction}>
-                            <Button type="submit" variant="destructive">
-                                Disconnect Email
-                            </Button>
-                        </form>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+        <EmailIntegrationCard 
+            isConnected={isConnected} 
+            integration={integration} 
+            disconnectAction={disconnectGoogleAction} 
+        />
     );
 
     const signalCard = (
-        <Card className="border-[#A089E6]/30 bg-[#A089E6]/3">
-            <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div className="space-y-2">
-                    <CardTitle className="text-base">Signal Integration</CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                        Device name: {signalDeviceName}
-                    </p>
-                </div>
-
-                {isSignalConnected ? (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="default">Connected</Badge>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline">Not connected</Badge>
-                    </div>
-                )}
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-                {isSignalServiceConfigured ? (
-                    <SignalQrModal />
-                ) : (
-                    <p className="text-xs text-red-300">
-                        SIGNAL_CLI_REST_URL is missing. Add it to your environment first.
-                    </p>
-                )}
-
-                <form action={saveSignalIntegrationAction} className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                            <label
-                                htmlFor="senderNumber"
-                                className="text-xs text-muted-foreground"
-                            >
-                                Sender Number
-                            </label>
-                            <Input
-                                id="senderNumber"
-                                name="senderNumber"
-                                placeholder="+910000000000"
-                                defaultValue={senderNumber}
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label
-                                htmlFor="recipientNumber"
-                                className="text-xs text-muted-foreground"
-                            >
-                                Recipient Number
-                            </label>
-                            <Input
-                                id="recipientNumber"
-                                name="recipientNumber"
-                                placeholder="+910000000000"
-                                defaultValue={recipientNumber}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button type="submit">Save Signal Numbers</Button>
-                    </div>
-                </form>
-
-                {isSignalConnected ? (
-                    <form action={disconnectSignalAction}>
-                        <Button type="submit" variant="destructive">
-                            Disconnect Signal
-                        </Button>
-                    </form>
-                ) : null}
-            </CardContent>
-        </Card>
+        <SignalIntegrationCard 
+            signalDeviceName={signalDeviceName}
+            isSignalConnected={isSignalConnected}
+            isSignalServiceConfigured={isSignalServiceConfigured}
+            senderNumber={senderNumber}
+            recipientNumber={recipientNumber}
+            saveAction={saveSignalIntegrationAction}
+            disconnectAction={disconnectSignalAction}
+        />
     );
 
     const emailSection = (
@@ -381,19 +283,4 @@ function buildSignalSettingsUrl(
     }
 
     return url;
-}
-
-async function ConnectedEmailDetails({ integration }: { integration: NonNullable<Awaited<ReturnType<typeof getIntegration>>> }) {
-    let email: string | null = null;
-    try {
-        email = await getConnectedGmailAddress({
-            accessTokenEncrypted: integration.accessTokenEncrypted,
-            refreshTokenEncrypted: integration.refreshTokenEncrypted,
-        });
-    } catch (error) {
-        console.error("[SETTINGS] Failed to resolve connected Gmail address");
-        console.error(error);
-    }
-
-    return <span>{email || "Unable to load Gmail address"}</span>;
 }

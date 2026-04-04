@@ -1,7 +1,7 @@
 import { gmail_v1, google } from "googleapis";
 import { decrypt } from "@/lib/encryption";
-import { getIntegration } from "@/lib/db/queries";
-import { getGoogleOAuthConfig } from "@/lib/env";
+import { getIntegration } from "@/db/queries";
+import { getGoogleOAuthConfig } from "@/config/env";
 
 const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_USER_ID = "me";

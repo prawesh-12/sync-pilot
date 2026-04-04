@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getGoogleAuthorizationUrl } from "@/lib/agent/gmail";
+import { getGoogleAuthorizationUrl } from "@/features/gmail/gmail";
 
 export async function GET() {
   const { userId } = await auth();
