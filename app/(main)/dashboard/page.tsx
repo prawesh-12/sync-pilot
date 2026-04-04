@@ -54,7 +54,7 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/dashboard?settings=open"
-            className="rounded-full border border-[#A089E6]/30 px-4 py-1 text-sm text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
+            className="rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-[#07070f] transition-colors hover:bg-white"
           >
             Connection Setting
           </Link>
