@@ -8,6 +8,8 @@ type DashboardPageProps = {
   searchParams: Promise<{
     gmail?: string | string[];
     gmailError?: string | string[];
+    signal?: string | string[];
+    signalError?: string | string[];
     settings?: string | string[];
   }>;
 };
@@ -71,7 +73,7 @@ export default async function DashboardPage({
           <div className="rounded-2xl border border-[#A089E6]/15 bg-white/4 p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-2xl font-semibold text-white">Email Integration</h2>
+                <h2 className="text-2xl font-semibold text-white">Integration</h2>
               </div>
               <span
                 className={
@@ -93,15 +95,6 @@ export default async function DashboardPage({
                 Connect your Google account to start the email summary pipeline.
               </p>
             )}
-
-            {!isConnected ? (
-              <Link
-                href="/api/auth/google"
-                className="mt-4 inline-flex rounded-full bg-[#A089E6] px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#8b6fd4]"
-              >
-                Connect Google Account
-              </Link>
-            ) : null}
           </div>
 
           <div className="mx-auto w-full max-w-md rounded-2xl border border-[#A089E6]/15 bg-white/4 p-6">
@@ -157,6 +150,8 @@ export default async function DashboardPage({
               searchParams={
                 Promise.resolve({
                   gmail: params.gmail,
+                  signal: params.signal,
+                  signalError: params.signalError,
                 })
               }
               variant="popup"

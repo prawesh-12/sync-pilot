@@ -29,7 +29,7 @@ export async function runAgent(userId: string): Promise<AgentRunSummary> {
             `[GMAIL] Found ${emails.length} emails in current sync window`,
         );
 
-        const { summary } = await processEmails(emails);
+        const { summary } = await processEmails(userId, emails);
         await saveRunResult(userId, summary);
         logRunComplete(summary.summariesSent);
 
@@ -49,12 +49,13 @@ export async function runAgent(userId: string): Promise<AgentRunSummary> {
 }
 
 async function processEmails(
+    userId: string,
     emails: GmailEmail[],
 ): Promise<{ summary: AgentRunSummary }> {
     let summariesSent = 0;
 
     for (const [index, email] of emails.entries()) {
-        const result = await processEmail(email);
+        const result = await processEmail(userId, email);
 
         if (result.summarySent) {
             summariesSent += 1;
@@ -74,7 +75,10 @@ async function processEmails(
     };
 }
 
-async function processEmail(email: GmailEmail): Promise<ProcessEmailResult> {
+async function processEmail(
+    userId: string,
+    email: GmailEmail,
+): Promise<ProcessEmailResult> {
     const summary = await summariseEmailWithLogging(email);
 
     if (!summary) {
@@ -83,7 +87,11 @@ async function processEmail(email: GmailEmail): Promise<ProcessEmailResult> {
         };
     }
 
-    const signalResult = await sendSignalMessage(summary, email.subject);
+    const signalResult = await sendSignalMessage(
+        summary,
+        email.subject,
+        userId,
+    );
 
     if (!signalResult.ok) {
         console.error(

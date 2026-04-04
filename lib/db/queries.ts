@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db/client";
 import {
     agentRuns,
     integrations,
+    signalIntegrations,
     users,
     type RunStatusValue,
 } from "@/lib/db/schema";
@@ -18,6 +19,12 @@ type AgentRunResult = {
     emailsFound: number;
     summariesSent: number;
     status: RunStatusValue;
+};
+
+type SignalIntegrationInput = {
+    deviceName: string;
+    senderNumber: string;
+    recipientNumber: string;
 };
 
 type AppUser = {
@@ -98,6 +105,79 @@ export async function getUserIdsWithGmailIntegration() {
         .where(eq(integrations.provider, GMAIL_PROVIDER));
 
     return rows.map((row) => row.userId);
+}
+
+export async function upsertSignalIntegration(
+    userId: string,
+    input: SignalIntegrationInput,
+) {
+    const db = getDb();
+    const [integration] = await db
+        .insert(signalIntegrations)
+        .values({
+            userId,
+            deviceName: input.deviceName,
+            senderNumber: input.senderNumber,
+            recipientNumber: input.recipientNumber,
+        })
+        .onConflictDoUpdate({
+            target: signalIntegrations.userId,
+            set: {
+                deviceName: input.deviceName,
+                senderNumber: input.senderNumber,
+                recipientNumber: input.recipientNumber,
+                updatedAt: new Date(),
+            },
+        })
+        .returning({
+            id: signalIntegrations.id,
+            userId: signalIntegrations.userId,
+            deviceName: signalIntegrations.deviceName,
+            senderNumber: signalIntegrations.senderNumber,
+            recipientNumber: signalIntegrations.recipientNumber,
+            createdAt: signalIntegrations.createdAt,
+            updatedAt: signalIntegrations.updatedAt,
+        });
+
+    return integration;
+}
+
+export async function getSignalIntegration(userId: string) {
+    const db = getDb();
+    const [integration] = await db
+        .select({
+            id: signalIntegrations.id,
+            userId: signalIntegrations.userId,
+            deviceName: signalIntegrations.deviceName,
+            senderNumber: signalIntegrations.senderNumber,
+            recipientNumber: signalIntegrations.recipientNumber,
+            createdAt: signalIntegrations.createdAt,
+            updatedAt: signalIntegrations.updatedAt,
+        })
+        .from(signalIntegrations)
+        .where(eq(signalIntegrations.userId, userId))
+        .limit(1);
+
+    return integration ?? null;
+}
+
+export async function getUserIdsWithSignalIntegration() {
+    const db = getDb();
+    const rows = await db
+        .selectDistinct({ userId: signalIntegrations.userId })
+        .from(signalIntegrations);
+
+    return rows.map((row) => row.userId);
+}
+
+export async function disconnectSignalIntegration(userId: string) {
+    const db = getDb();
+    const deletedRows = await db
+        .delete(signalIntegrations)
+        .where(eq(signalIntegrations.userId, userId))
+        .returning({ id: signalIntegrations.id });
+
+    return deletedRows.length > 0;
 }
 
 export async function updateIntegrationLastRunTimestamp(

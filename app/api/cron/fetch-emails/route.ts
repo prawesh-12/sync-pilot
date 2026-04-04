@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { runAgent, type AgentRunSummary } from "@/lib/agent/run-agent";
-import { getUserIdsWithGmailIntegration } from "@/lib/db/queries";
+import {
+    getUserIdsWithGmailIntegration,
+    getUserIdsWithSignalIntegration,
+} from "@/lib/db/queries";
 import { getCronSecret } from "@/lib/env";
 
 export const preferredRegion = "sin1";
@@ -30,7 +33,14 @@ async function handleCronRequest(request: Request) {
             );
         }
 
-        const userIds = await getUserIdsWithGmailIntegration();
+        const [gmailUserIds, signalUserIds] = await Promise.all([
+            getUserIdsWithGmailIntegration(),
+            getUserIdsWithSignalIntegration(),
+        ]);
+        const signalUserIdSet = new Set(signalUserIds);
+        const userIds = gmailUserIds.filter((userId) =>
+            signalUserIdSet.has(userId),
+        );
         const runs: CronRun[] = [];
 
         for (const userId of userIds) {
@@ -40,6 +50,10 @@ async function handleCronRequest(request: Request) {
 
         return NextResponse.json({
             usersProcessed: userIds.length,
+            usersSkippedMissingSignal: Math.max(
+                gmailUserIds.length - userIds.length,
+                0,
+            ),
             successfulRuns: runs.filter((run) => run.status === "success")
                 .length,
             failedRuns: runs.filter((run) => run.status === "error").length,

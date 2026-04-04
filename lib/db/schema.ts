@@ -52,6 +52,26 @@ export const integrations = pgTable(
     ],
 );
 
+export const signalIntegrations = pgTable(
+    "signal_integrations",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        deviceName: text("device_name").notNull(),
+        senderNumber: text("sender_number").notNull(),
+        recipientNumber: text("recipient_number").notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [unique("signal_integrations_user_unique").on(table.userId)],
+);
+
 export const processedEmails = pgTable("processed_emails", {
     messageId: text("message_id").primaryKey(),
     userId: text("user_id")

@@ -36,8 +36,6 @@ Optional variables:
 
 - `GROQ_MODEL` default `openai/gpt-oss-120b`
 - `SIGNAL_CLI_REST_URL`
-- `SIGNAL_SENDER_NUMBER`
-- `SIGNAL_RECIPIENT_NUMBER`
 
 3. Run the development server.
 
@@ -55,9 +53,9 @@ Authenticated route that accepts:
 
 ```json
 {
-  "workflow": "operations_copilot",
-  "task": "Summarize this vendor thread and recommend the next steps.",
-  "context": "Raw notes, email thread, or scheduling context"
+    "workflow": "operations_copilot",
+    "task": "Summarize this vendor thread and recommend the next steps.",
+    "context": "Raw notes, email thread, or scheduling context"
 }
 ```
 
@@ -81,8 +79,10 @@ The route returns a structured JSON brief with:
 Expected environment variables:
 
 - `SIGNAL_CLI_REST_URL`
-- `SIGNAL_SENDER_NUMBER`
-- `SIGNAL_RECIPIENT_NUMBER`
+
+Signal sender and recipient numbers are configured per user from Settings.
+Each signed-in user can connect their own Signal account via QR and save their
+own sender/recipient numbers.
 
 The helper returns `{ ok, error?, statusCode? }` so cron or orchestration code
 can log failures without crashing the whole run.
