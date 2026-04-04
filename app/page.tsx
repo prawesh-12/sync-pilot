@@ -51,7 +51,7 @@ export default function Home() {
 
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Link
-                  href="/sign-up"
+                  href="/dashboard"
                   className="rounded-full bg-[#A089E6] px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#8b6fd4]"
                 >
                   Get Started <span aria-hidden="true">&rarr;</span>
