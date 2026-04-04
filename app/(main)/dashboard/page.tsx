@@ -1,7 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import SettingsPage from "@/app/(main)/settings/page";
+import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { getIntegration, getRecentAgentRuns } from "@/lib/db/queries";
 
 type DashboardPageProps = {
@@ -146,16 +148,18 @@ export default async function DashboardPage({
             >
               Close
             </Link>
-            <SettingsPage
-              searchParams={
-                Promise.resolve({
-                  gmail: params.gmail,
-                  signal: params.signal,
-                  signalError: params.signalError,
-                })
-              }
-              variant="popup"
-            />
+            <Suspense fallback={<SettingsPopupSkeleton />}>
+              <SettingsPage
+                searchParams={
+                  Promise.resolve({
+                    gmail: params.gmail,
+                    signal: params.signal,
+                    signalError: params.signalError,
+                  })
+                }
+                variant="popup"
+              />
+            </Suspense>
           </div>
         </div>
       ) : null}
