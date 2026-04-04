@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { AgentConsole } from "@/features/dashboard/components/agent-console";
 import SettingsPage from "@/app/(main)/settings/page";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { getIntegration, getRecentAgentRuns } from "@/db/queries";
