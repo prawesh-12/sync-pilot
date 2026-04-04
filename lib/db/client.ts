@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { getDatabaseUrl } from "@/lib/env";
 import * as schema from "@/lib/db/schema";
 
-const MAX_DATABASE_CONNECTIONS = 1;
+const MAX_DATABASE_CONNECTIONS = 10;
 const DATABASE_IDLE_TIMEOUT_SECONDS = 20;
 
 let client: postgres.Sql | null = null;

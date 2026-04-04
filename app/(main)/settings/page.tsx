@@ -2,6 +2,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,19 +66,9 @@ export default async function SettingsPage({
     const signalDeviceName = signalIntegration?.deviceName || buildSignalDeviceName(userId);
     const senderNumber = signalIntegration?.senderNumber || "";
     const recipientNumber = signalIntegration?.recipientNumber || "";
-    let connectedGmailAddress: string | null = null;
-
-    if (integration) {
-        try {
-            connectedGmailAddress = await getConnectedGmailAddress({
-                accessTokenEncrypted: integration.accessTokenEncrypted,
-                refreshTokenEncrypted: integration.refreshTokenEncrypted,
-            });
-        } catch (error) {
-            console.error("[SETTINGS] Failed to resolve connected Gmail address");
-            console.error(error);
-        }
-    }
+    // We remove the slow synchronous getConnectedGmailAddress call from the main page body
+    // to prevent the entire Settings popup from stalling. It is now handled asynchronously
+    // inside the ConnectedEmailDetails component below.
 
     async function disconnectGoogleAction() {
         "use server";
@@ -202,9 +194,12 @@ export default async function SettingsPage({
                     <CardTitle className="text-base">Email Integration</CardTitle>
                 </div>
 
-                {isConnected ? (
+                {isConnected && integration ? (
                     <div className="flex items-center gap-2">
-                        <Badge variant="default">Connected </Badge> {connectedGmailAddress || "Unable to load Gmail address"}
+                        <Badge variant="default">Connected</Badge> 
+                        <Suspense fallback={<Skeleton width="150px" height="20px" />}>
+                            <ConnectedEmailDetails integration={integration} />
+                        </Suspense>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
@@ -386,4 +381,19 @@ function buildSignalSettingsUrl(
     }
 
     return url;
+}
+
+async function ConnectedEmailDetails({ integration }: { integration: NonNullable<Awaited<ReturnType<typeof getIntegration>>> }) {
+    let email: string | null = null;
+    try {
+        email = await getConnectedGmailAddress({
+            accessTokenEncrypted: integration.accessTokenEncrypted,
+            refreshTokenEncrypted: integration.refreshTokenEncrypted,
+        });
+    } catch (error) {
+        console.error("[SETTINGS] Failed to resolve connected Gmail address");
+        console.error(error);
+    }
+
+    return <span>{email || "Unable to load Gmail address"}</span>;
 }
