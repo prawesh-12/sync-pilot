@@ -10,6 +10,11 @@ In short:
 3. SyncPilot fetches new emails, summarizes them with AI, and delivers results to Signal.
 
 ---
+# Architecture
+
+<img src="./public/previews/sync_pilot_architecture.excalidraw.png" alt="SyncPilot Architecture"/>
+
+---
 
 # Previews
 
@@ -284,5 +289,10 @@ returns summary stats like:
 - Gmail scope is read-only.
 - Signal numbers are saved per user from Settings.
 - Agent run history is stored and shown on Dashboard.
+
+---
+## License
+
+MIT — see [`LICENSE`](./LICENSE)
 
 ---
