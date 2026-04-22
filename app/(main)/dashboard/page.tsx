@@ -1,10 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import SettingsPage from "@/app/(main)/settings/page";
+import { DashboardSettingsModal } from "@/components/dashboard/dashboard-settings-modal";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { getIntegration, getRecentAgentRuns } from "@/db/queries";
+import { SettingsPanel } from "@/features/settings/components/settings-panel";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -26,8 +26,10 @@ export default async function DashboardPage({
   }
 
   const params = await searchParams;
-  const integration = await getIntegration(userId);
-  const recentRuns = await getRecentAgentRuns(userId, 10);
+  const [integration, recentRuns] = await Promise.all([
+    getIntegration(userId),
+    getRecentAgentRuns(userId, 10),
+  ]);
   const isConnected = Boolean(integration);
   const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
   const gmailError = Array.isArray(params.gmailError)
@@ -51,12 +53,22 @@ export default async function DashboardPage({
               Monitor Gmail connection status and recent SyncPilot runs.
             </p>
           </div>
-          <Link
-            href="/dashboard?settings=open"
-            className="w-full shrink-0 rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] transition-colors hover:bg-white sm:w-auto"
-          >
-            Connection Setting
-          </Link>
+          <DashboardSettingsModal isOpen={isSettingsOpen}>
+            {isSettingsOpen ? (
+              <Suspense fallback={<SettingsPopupSkeleton />}>
+                <SettingsPanel
+                  userId={userId}
+                  searchParams={{
+                    gmail: params.gmail,
+                    signal: params.signal,
+                    signalError: params.signalError,
+                  }}
+                  variant="popup"
+                  integration={integration}
+                />
+              </Suspense>
+            ) : null}
+          </DashboardSettingsModal>
         </section>
 
         {gmailStatus === "connected" ? (
@@ -143,31 +155,6 @@ export default async function DashboardPage({
           </div>
         </section>
       </div>
-
-      {isSettingsOpen ? (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4">
-          <div className="relative h-full w-full overflow-y-hidden rounded-none border border-[#A089E6]/20 bg-[#07070f] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-5xl sm:overflow-y-auto sm:rounded-2xl">
-            <Link
-              href="/dashboard"
-              className="absolute right-4 top-4 z-10 rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
-            >
-              Close
-            </Link>
-            <Suspense fallback={<SettingsPopupSkeleton />}>
-              <SettingsPage
-                searchParams={
-                  Promise.resolve({
-                    gmail: params.gmail,
-                    signal: params.signal,
-                    signalError: params.signalError,
-                  })
-                }
-                variant="popup"
-              />
-            </Suspense>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }
