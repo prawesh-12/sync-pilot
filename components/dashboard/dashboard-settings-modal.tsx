@@ -10,6 +10,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 
 const OPEN_SETTINGS_HREF = "/dashboard?settings=open";
@@ -25,9 +26,14 @@ export function DashboardSettingsModal({
   children,
 }: DashboardSettingsModalProps) {
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [optimisticOpen, setOptimisticOpen] = useState(isOpen);
   const [, startTransition] = useTransition();
-  const shouldShowModal = optimisticOpen || isOpen;
+  const shouldShowModal = optimisticOpen;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     setOptimisticOpen(isOpen);
@@ -87,6 +93,25 @@ export function DashboardSettingsModal({
     closeSettings();
   }
 
+  const modal = shouldShowModal ? (
+    <div
+      aria-modal="true"
+      role="dialog"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-0 sm:p-4"
+    >
+      <div className="relative h-full w-full overflow-y-hidden rounded-none border border-[#A089E6]/20 bg-[#07070f] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-5xl sm:overflow-y-auto sm:rounded-2xl">
+        <Link
+          href={CLOSED_SETTINGS_HREF}
+          onClick={handleCloseClick}
+          className="absolute right-4 top-4 z-10 rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
+        >
+          Close
+        </Link>
+        {isOpen ? children : <SettingsPopupSkeleton />}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <Link
@@ -97,24 +122,7 @@ export function DashboardSettingsModal({
         Connection Setting
       </Link>
 
-      {shouldShowModal ? (
-        <div
-          aria-modal="true"
-          role="dialog"
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4"
-        >
-          <div className="relative h-full w-full overflow-y-hidden rounded-none border border-[#A089E6]/20 bg-[#07070f] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-5xl sm:overflow-y-auto sm:rounded-2xl">
-            <Link
-              href={CLOSED_SETTINGS_HREF}
-              onClick={handleCloseClick}
-              className="absolute right-4 top-4 z-10 rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
-            >
-              Close
-            </Link>
-            {isOpen ? children : <SettingsPopupSkeleton />}
-          </div>
-        </div>
-      ) : null}
+      {isMounted && modal ? createPortal(modal, document.body) : null}
     </>
   );
 }
