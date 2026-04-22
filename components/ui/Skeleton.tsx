@@ -24,7 +24,7 @@ export function Skeleton({
       aria-busy="true"
       aria-label="Loading..."
       style={finalStyle}
-      className={cn(`skeleton block`, finalRounded, className)}
+      className={cn("skeleton block max-w-full", finalRounded, className)}
     />
   );
 }
