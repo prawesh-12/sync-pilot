@@ -1,7 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { Navbar } from "@/components/navbar";
 
-export default function AuthLayout({
+export default function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -9,13 +9,10 @@ export default function AuthLayout({
   return (
     <ClerkProvider>
       <Navbar />
-      <main className="mx-auto flex min-h-[calc(100vh-137px)] w-full max-w-6xl items-center justify-center px-4 py-12 sm:px-6">
-        {children}
-      </main>
+      {children}
       <footer className="border-t border-[#A089E6]/10 bg-[#07070f]/90 py-3 text-center text-xs text-gray-600">
         © {new Date().getFullYear()} SyncPilot AI
       </footer>
     </ClerkProvider>
   );
 }
-
