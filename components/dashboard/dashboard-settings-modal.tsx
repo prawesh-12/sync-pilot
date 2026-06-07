@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
-  useCallback,
+  Suspense,
   useEffect,
+  useRef,
   useState,
-  useTransition,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 const OPEN_SETTINGS_HREF = "/dashboard?settings=open";
 const CLOSED_SETTINGS_HREF = "/dashboard";
@@ -21,15 +23,32 @@ type DashboardSettingsModalProps = {
   children?: ReactNode;
 };
 
-export function DashboardSettingsModal({
+type PendingAction = "open" | "close" | null;
+
+function DashboardSettingsModalInner({
   isOpen,
   children,
 }: DashboardSettingsModalProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
+  const closeLinkRef = useRef<HTMLAnchorElement>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [optimisticOpen, setOptimisticOpen] = useState(isOpen);
-  const [, startTransition] = useTransition();
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  const [prevSearch, setPrevSearch] = useState(search);
   const shouldShowModal = optimisticOpen;
+
+  if (pathname !== prevPathname || search !== prevSearch) {
+    setPrevPathname(pathname);
+    setPrevSearch(search);
+    setPendingAction(null);
+  }
+
+  const isOpening = pendingAction === "open";
+  const isClosing = pendingAction === "close";
 
   useEffect(() => {
     setIsMounted(true);
@@ -43,13 +62,6 @@ export function DashboardSettingsModal({
     router.prefetch(OPEN_SETTINGS_HREF);
   }, [router]);
 
-  const closeSettings = useCallback(() => {
-    setOptimisticOpen(false);
-    startTransition(() => {
-      router.push(CLOSED_SETTINGS_HREF);
-    });
-  }, [router]);
-
   useEffect(() => {
     if (!shouldShowModal) {
       return;
@@ -60,7 +72,9 @@ export function DashboardSettingsModal({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        closeSettings();
+        setOptimisticOpen(false);
+        setPendingAction("close");
+        closeLinkRef.current?.click();
       }
     }
 
@@ -70,18 +84,15 @@ export function DashboardSettingsModal({
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeSettings, shouldShowModal]);
+  }, [shouldShowModal]);
 
   function handleOpenClick(event: MouseEvent<HTMLAnchorElement>) {
     if (isModifiedClick(event)) {
       return;
     }
 
-    event.preventDefault();
     setOptimisticOpen(true);
-    startTransition(() => {
-      router.push(OPEN_SETTINGS_HREF);
-    });
+    setPendingAction("open");
   }
 
   function handleCloseClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -89,8 +100,8 @@ export function DashboardSettingsModal({
       return;
     }
 
-    event.preventDefault();
-    closeSettings();
+    setOptimisticOpen(false);
+    setPendingAction("close");
   }
 
   const modal = shouldShowModal ? (
@@ -101,11 +112,16 @@ export function DashboardSettingsModal({
     >
       <div className="relative h-full w-full overflow-y-hidden rounded-none border border-[#A089E6]/20 bg-[#07070f] shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-5xl sm:overflow-y-auto sm:rounded-2xl">
         <Link
+          ref={closeLinkRef}
           href={CLOSED_SETTINGS_HREF}
           onClick={handleCloseClick}
-          className="absolute right-4 top-4 z-10 rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10"
+          aria-busy={isClosing}
+          className={cn(
+            "absolute right-4 top-4 z-10 inline-flex min-w-[4.5rem] items-center justify-center rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10",
+            isClosing && "pointer-events-none",
+          )}
         >
-          Close
+          {isClosing ? <Spinner className="size-3" /> : "Close"}
         </Link>
         {isOpen ? children : <SettingsPopupSkeleton />}
       </div>
@@ -117,13 +133,35 @@ export function DashboardSettingsModal({
       <Link
         href={OPEN_SETTINGS_HREF}
         onClick={handleOpenClick}
-        className="w-full shrink-0 rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] transition-colors hover:bg-white sm:w-auto"
+        aria-busy={isOpening}
+        className={cn(
+          "inline-flex w-full shrink-0 items-center justify-center rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] transition-colors hover:bg-white sm:w-auto sm:min-w-[10rem]",
+          isOpening && "pointer-events-none",
+        )}
       >
-        Connection Setting
+        {isOpening ? (
+          <Spinner className="size-4 text-[#07070f]" />
+        ) : (
+          "Connection Setting"
+        )}
       </Link>
 
       {isMounted && modal ? createPortal(modal, document.body) : null}
     </>
+  );
+}
+
+export function DashboardSettingsModal(props: DashboardSettingsModalProps) {
+  return (
+    <Suspense
+      fallback={
+        <span className="inline-flex w-full shrink-0 items-center justify-center rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] sm:w-auto sm:min-w-[10rem]">
+          Connection Setting
+        </span>
+      }
+    >
+      <DashboardSettingsModalInner {...props} />
+    </Suspense>
   );
 }
 

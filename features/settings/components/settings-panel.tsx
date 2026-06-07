@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { PendingLink } from "@/components/pending-link";
 import { Button } from "@/components/ui/button";
 import { isSignalConfigured } from "@/config/env";
 import {
@@ -231,7 +231,7 @@ export async function SettingsPanel({
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link href="/dashboard">Back to dashboard</Link>
+          <PendingLink href="/dashboard">Back to dashboard</PendingLink>
         </Button>
       </section>
 

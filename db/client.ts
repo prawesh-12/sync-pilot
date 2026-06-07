@@ -5,6 +5,7 @@ import * as schema from "@/db/schema";
 
 const MAX_DATABASE_CONNECTIONS = 10;
 const DATABASE_IDLE_TIMEOUT_SECONDS = 20;
+const DATABASE_CONNECT_TIMEOUT_SECONDS = 10;
 
 let client: postgres.Sql | null = null;
 let database: ReturnType<typeof drizzle<typeof schema>> | null = null;
@@ -19,6 +20,7 @@ function createClient() {
   return postgres(databaseUrl, {
     max: MAX_DATABASE_CONNECTIONS,
     idle_timeout: DATABASE_IDLE_TIMEOUT_SECONDS,
+    connect_timeout: DATABASE_CONNECT_TIMEOUT_SECONDS,
     prepare: false,
   });
 }

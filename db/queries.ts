@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
@@ -76,7 +77,7 @@ export async function saveIntegration(
     return integration;
 }
 
-export async function getIntegration(userId: string) {
+export const getIntegration = cache(async function getIntegration(userId: string) {
     const db = getDb();
     const [integration] = await db
         .select({
@@ -95,7 +96,7 @@ export async function getIntegration(userId: string) {
         .limit(1);
 
     return integration ?? null;
-}
+});
 
 export async function getUserIdsWithGmailIntegration() {
     const db = getDb();
@@ -202,7 +203,10 @@ export async function updateIntegrationLastRunTimestamp(
     return integration ?? null;
 }
 
-export async function getRecentAgentRuns(userId: string, limit = 10) {
+export const getRecentAgentRuns = cache(async function getRecentAgentRuns(
+    userId: string,
+    limit = 10,
+) {
     const db = getDb();
     const safeLimit = Math.min(Math.max(limit, 1), 50);
 
@@ -218,7 +222,7 @@ export async function getRecentAgentRuns(userId: string, limit = 10) {
         .where(eq(agentRuns.userId, userId))
         .orderBy(desc(agentRuns.ranAt))
         .limit(safeLimit);
-}
+});
 
 export async function disconnectGmailIntegration(userId: string) {
     const db = getDb();

@@ -1,8 +1,10 @@
-import Link from "next/link";
 import Image from "next/image";
 import { DM_Sans } from "next/font/google";
 import { Brain } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { LandingAuth } from "@/components/landing-auth";
+import { PendingLink } from "@/components/pending-link";
+import { SiteFooter } from "@/components/site-footer";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -14,12 +16,7 @@ export default function Home() {
     <>
       <header className="sticky top-0 z-50 border-b border-[#A089E6]/10 bg-[#07070f]/90 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link
-            href="/"
-            className="text-sm font-semibold uppercase tracking-[0.28em] text-white"
-          >
-            SyncPilot
-          </Link>
+          <BrandLogo />
           <LandingAuth />
         </div>
       </header>
@@ -64,12 +61,12 @@ export default function Home() {
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  <Link
+                  <PendingLink
                     href="/dashboard"
                     className="rounded-full bg-[#A089E6] px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#8b6fd4]"
                   >
                     Get Started <span aria-hidden="true">&rarr;</span>
-                  </Link>
+                  </PendingLink>
                 </div>
               </div>
 
@@ -172,9 +169,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t border-[#A089E6]/10 bg-[#07070f]/90 py-3 text-center text-xs text-gray-600">
-        © {new Date().getFullYear()} SyncPilot AI
-      </footer>
+      <SiteFooter />
     </>
   );
 }

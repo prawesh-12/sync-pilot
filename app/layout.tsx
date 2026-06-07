@@ -10,6 +10,11 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "SyncPilot - AI Agent",
   description: "SyncPilot control dashboard",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
