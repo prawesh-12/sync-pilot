@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PendingLink } from "@/components/pending-link";
 import { Button } from "@/components/ui/button";
+import { ctaButtonTheme } from "@/components/cta-button-class";
 import { isSignalConfigured } from "@/config/env";
 import {
   disconnectGmailIntegration,
@@ -62,6 +63,8 @@ export async function SettingsPanel({
     signalIntegration?.deviceName || buildSignalDeviceName(userId);
   const senderNumber = signalIntegration?.senderNumber || "";
   const recipientNumber = signalIntegration?.recipientNumber || "";
+  const emailReturnTo =
+    variant === "popup" ? "/dashboard?settings=open" : "/settings";
 
   async function disconnectGoogleAction() {
     "use server";
@@ -192,6 +195,7 @@ export async function SettingsPanel({
         userId={userId}
         isConnected={isConnected}
         integration={resolvedIntegration}
+        returnTo={emailReturnTo}
         disconnectAction={disconnectGoogleAction}
       />
     </section>
@@ -233,7 +237,7 @@ export async function SettingsPanel({
             Manage connected integrations.
           </p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild className={ctaButtonTheme}>
           <PendingLink href="/dashboard">Back to dashboard</PendingLink>
         </Button>
       </section>

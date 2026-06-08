@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "Terms and conditions for using SyncPilot's Gmail-to-Signal AI summarization service.",
 };
 
-const LAST_UPDATED = "June 7, 2026";
+const LAST_UPDATED = "June 9, 2026";
 
 export default function TermsPage() {
   return (
@@ -24,7 +24,7 @@ export default function TermsPage() {
         <h2>1. Description of Service</h2>
         <p>SyncPilot provides:</p>
         <ul>
-          <li>Read-only Gmail integration via Google OAuth</li>
+          <li>Read-only Gmail integration via Composio (Google OAuth)</li>
           <li>AI-generated summaries of new email messages using Groq</li>
           <li>Delivery of summaries to a Signal number you configure</li>
           <li>A dashboard to manage integrations and view run history</li>
@@ -71,9 +71,14 @@ export default function TermsPage() {
         </p>
         <ul>
           <li>
-            <strong>Gmail:</strong> You grant read-only access to fetch new
-            messages. You may revoke access at any time through Settings or
-            your Google Account permissions.
+            <strong>Gmail (via Composio):</strong> You grant read-only access to
+            fetch new messages. The connection and its Google OAuth tokens are
+            brokered and managed by Composio. You may revoke access at any time
+            through Settings or your Google Account permissions.
+          </li>
+          <li>
+            <strong>Composio:</strong> Manages the Gmail connection and the
+            Google OAuth tokens used to fetch your messages on your behalf.
           </li>
           <li>
             <strong>Signal:</strong> You link a device by scanning a QR code and
@@ -111,7 +116,7 @@ export default function TermsPage() {
           <li>Send spam, harassing, or unlawful content through Signal delivery</li>
           <li>Attempt to bypass security measures or abuse API endpoints</li>
           <li>Reverse engineer, scrape, or overload the service</li>
-          <li>Use the service in violation of Google, Signal, Groq, or applicable law</li>
+          <li>Use the service in violation of Google, Composio, Signal, Groq, or applicable law</li>
         </ul>
         <p>
           We may suspend or terminate access if we reasonably believe you have

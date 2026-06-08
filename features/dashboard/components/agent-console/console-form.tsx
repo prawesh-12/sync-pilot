@@ -1,6 +1,7 @@
 import { AlertCircle, LoaderCircle, Send, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ctaButtonTheme } from "@/components/cta-button-class";
 import {
   Card,
   CardContent,
@@ -142,7 +143,7 @@ export function ConsoleForm({
               <ShieldCheck className="size-4" />
               Protected route + server-side provider key
             </div>
-            <Button type="submit" size="lg" disabled={isPending || !isConfigured}>
+            <Button type="submit" size="lg" className={ctaButtonTheme} disabled={isPending || !isConfigured}>
               {isPending ? (
                 <>
                   <LoaderCircle className="size-4 animate-spin" />

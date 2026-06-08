@@ -1,4 +1,6 @@
 import { signIn } from "@/auth";
+import { ctaButtonTheme } from "@/components/cta-button-class";
+import { cn } from "@/lib/utils";
 
 type GoogleSignInButtonProps = {
   label?: string;
@@ -18,7 +20,10 @@ export function GoogleSignInButton({
     >
       <button
         type="submit"
-        className="flex w-full items-center justify-center gap-3 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-gray-100"
+        className={cn(
+          ctaButtonTheme,
+          "flex w-full items-center justify-center gap-3 px-6 py-2.5 text-sm",
+        )}
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
           <path

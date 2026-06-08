@@ -2,7 +2,9 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { ctaButtonClass, ctaButtonTheme } from "@/components/cta-button-class";
 import { PendingLink } from "@/components/pending-link";
 import { cn } from "@/lib/utils";
 
@@ -27,20 +29,10 @@ export function Navbar({ className }: NavbarProps) {
 
                 <div className="flex items-center gap-3">
                     {!isSignedIn ? (
-                        <>
-                            <PendingLink
-                                href="/sign-in"
-                                className="px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-white"
-                            >
-                                Sign in
-                            </PendingLink>
-                            <PendingLink
-                                href="/sign-up"
-                                className="rounded-full bg-[#A089E6] px-5 py-1.5 text-sm font-semibold text-black transition-colors hover:bg-[#8b6fd4]"
-                            >
-                                Sign up
-                            </PendingLink>
-                        </>
+                        <PendingLink href="/sign-in" className={cn(ctaButtonClass, "px-4 py-2 text-sm")}>
+                            Sign in
+                            <ArrowRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />
+                        </PendingLink>
                     ) : (
                         <>
                             {!pathname.startsWith("/dashboard") ? (
@@ -54,7 +46,7 @@ export function Navbar({ className }: NavbarProps) {
                             <button
                                 type="button"
                                 onClick={() => signOut({ redirectTo: "/" })}
-                                className="rounded-full border border-[#A089E6]/30 px-4 py-1.5 text-sm text-gray-300 transition-colors hover:border-[#A089E6]/60 hover:text-white"
+                                className={cn(ctaButtonTheme, "px-4 py-1.5 text-sm")}
                             >
                                 Sign out
                             </button>

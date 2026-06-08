@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     "How SyncPilot collects, uses, and protects your data when connecting Gmail and Signal.",
 };
 
-const LAST_UPDATED = "June 7, 2026";
+const LAST_UPDATED = "June 9, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -29,10 +29,11 @@ export default function PrivacyPage() {
             account identifier provided when you sign in with Google.
           </li>
           <li>
-            <strong>Gmail integration data:</strong> OAuth access and refresh
-            tokens for Gmail (stored encrypted), and the timestamp of your last
-            email sync. We request read-only access to Gmail (
-            <code>gmail.readonly</code>).
+            <strong>Gmail integration data:</strong> A reference to the Gmail
+            connection you authorize through Composio and the timestamp of your
+            last email sync. Composio manages the underlying Google OAuth tokens
+            on your behalf, so we do not store your raw Gmail credentials. We
+            request read-only access to Gmail (<code>gmail.readonly</code>).
           </li>
           <li>
             <strong>Signal configuration:</strong> Device name, sender phone
@@ -99,6 +100,10 @@ export default function PrivacyPage() {
             via OAuth
           </li>
           <li>
+            <strong>Composio</strong> — brokers the Gmail connection and securely
+            manages the Google OAuth tokens used to fetch your messages
+          </li>
+          <li>
             <strong>Groq</strong> — AI summarization of email content and agent
             prompts
           </li>
@@ -125,7 +130,8 @@ export default function PrivacyPage() {
             or as needed to provide the service.
           </li>
           <li>
-            Gmail OAuth tokens are deleted when you disconnect Gmail in Settings.
+            Your Gmail connection is revoked through Composio when you
+            disconnect Gmail in Settings.
           </li>
           <li>
             Signal configuration is deleted when you disconnect Signal in
@@ -147,11 +153,12 @@ export default function PrivacyPage() {
         <p>We take reasonable measures to protect your data, including:</p>
         <ul>
           <li>
-            Encrypting Gmail OAuth tokens at rest using AES-256-GCM
+            Delegating Gmail token storage and refresh to Composio, so your raw
+            Google credentials are never stored on our servers
           </li>
-          <li>Requiring authentication for access to protected routes and APIs</li>
+          <li>Requiring Google sign-in for access to protected routes and APIs</li>
           <li>Protecting scheduled processing endpoints with a secret bearer token</li>
-          <li>Validating OAuth state parameters during Google authorization</li>
+          <li>Verifying the connection status returned by the OAuth flow before saving an integration</li>
         </ul>
         <p>
           No method of transmission or storage is completely secure. We cannot

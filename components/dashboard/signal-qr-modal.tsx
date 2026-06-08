@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { ctaButtonTheme } from "@/components/cta-button-class";
+import { cn } from "@/lib/utils";
 
 export function SignalQrModal() {
     const [isOpen, setIsOpen] = useState(false);
@@ -93,7 +95,7 @@ export function SignalQrModal() {
 
     return (
         <>
-            <Button type="button" variant="outline" className="mt-3" onClick={openModal}>
+            <Button type="button" className={cn(ctaButtonTheme, "mt-3")} onClick={openModal}>
                 Generate Signal QR
             </Button>
 
@@ -104,8 +106,8 @@ export function SignalQrModal() {
                             <h3 className="text-sm font-semibold text-white">Scan Signal QR</h3>
                             <Button
                                 type="button"
-                                variant="outline"
                                 size="sm"
+                                className={ctaButtonTheme}
                                 onClick={closeModal}
                             >
                                 Close

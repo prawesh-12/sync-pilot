@@ -1,20 +1,21 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ConnectedEmailDetails } from "./connected-email-details";
+import { ConnectGoogleButton } from "./connect-google-button";
 import { type getIntegration } from "@/db/queries";
 
 type EmailIntegrationCardProps = {
     userId: string;
     isConnected: boolean;
     integration: NonNullable<Awaited<ReturnType<typeof getIntegration>>> | null;
+    returnTo: string;
     disconnectAction: () => Promise<void>;
 };
 
-export function EmailIntegrationCard({ userId, isConnected, integration, disconnectAction }: EmailIntegrationCardProps) {
+export function EmailIntegrationCard({ userId, isConnected, integration, returnTo, disconnectAction }: EmailIntegrationCardProps) {
     return (
         <Card className="border-emerald-500/20 bg-emerald-500/3">
             <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -38,9 +39,7 @@ export function EmailIntegrationCard({ userId, isConnected, integration, disconn
             <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                     {!isConnected ? (
-                        <Button asChild>
-                            <Link href="/api/auth/composio">Connect Google Account</Link>
-                        </Button>
+                        <ConnectGoogleButton returnTo={returnTo} />
                     ) : (
                         <form action={disconnectAction} className="w-full sm:w-auto">
                             <Button type="submit" variant="destructive" className="w-full sm:w-auto">

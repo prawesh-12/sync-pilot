@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { ctaButtonTheme } from "@/components/cta-button-class";
 import { cn } from "@/lib/utils";
 
 const OPEN_SETTINGS_HREF = "/dashboard?settings=open";
@@ -117,7 +118,8 @@ function DashboardSettingsModalInner({
           onClick={handleCloseClick}
           aria-busy={isClosing}
           className={cn(
-            "absolute right-4 top-4 z-10 inline-flex min-w-[4.5rem] items-center justify-center rounded-full border border-[#A089E6]/30 bg-[#07070f]/90 px-4 py-1.5 text-xs text-[#A089E6] transition-colors hover:bg-[#A089E6]/10",
+            ctaButtonTheme,
+            "absolute right-4 top-4 z-10 inline-flex min-w-[4.5rem] items-center justify-center px-4 py-1.5 text-xs",
             isClosing && "pointer-events-none",
           )}
         >
@@ -135,12 +137,13 @@ function DashboardSettingsModalInner({
         onClick={handleOpenClick}
         aria-busy={isOpening}
         className={cn(
-          "inline-flex w-full shrink-0 items-center justify-center rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] transition-colors hover:bg-white sm:w-auto sm:min-w-[10rem]",
+          ctaButtonTheme,
+          "inline-flex w-full shrink-0 items-center justify-center px-4 py-1.5 text-center text-sm sm:w-auto sm:min-w-[10rem]",
           isOpening && "pointer-events-none",
         )}
       >
         {isOpening ? (
-          <Spinner className="size-4 text-[#07070f]" />
+          <Spinner className="size-4 text-[#f0eeff]" />
         ) : (
           "Connection Setting"
         )}
@@ -155,7 +158,7 @@ export function DashboardSettingsModal(props: DashboardSettingsModalProps) {
   return (
     <Suspense
       fallback={
-        <span className="inline-flex w-full shrink-0 items-center justify-center rounded-full bg-white/90 px-4 py-1.5 text-center text-sm font-medium text-[#07070f] sm:w-auto sm:min-w-[10rem]">
+        <span className={cn(ctaButtonTheme, "inline-flex w-full shrink-0 items-center justify-center px-4 py-1.5 text-center text-sm sm:w-auto sm:min-w-[10rem]")}>
           Connection Setting
         </span>
       }

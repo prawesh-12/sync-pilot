@@ -1,6 +1,8 @@
 import { BrandLogo } from "@/components/brand-logo";
+import { ctaButtonTheme } from "@/components/cta-button-class";
 import { PendingLink } from "@/components/pending-link";
 import { SiteFooter } from "@/components/site-footer";
+import { cn } from "@/lib/utils";
 
 type LegalPageShellProps = {
   title: string;
@@ -20,7 +22,7 @@ export function LegalPageShell({
           <BrandLogo />
           <PendingLink
             href="/dashboard"
-            className="rounded-full border border-[#A089E6]/30 px-4 py-1.5 text-xs font-medium text-[#A089E6] transition-colors hover:border-[#A089E6]/60 hover:bg-[#A089E6]/10"
+            className={cn(ctaButtonTheme, "px-4 py-1.5 text-xs")}
           >
             Dashboard
           </PendingLink>

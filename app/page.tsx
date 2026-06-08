@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { DM_Sans } from "next/font/google";
-import { Brain } from "lucide-react";
+import { ArrowRight, BookOpen, Brain } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { ctaButtonClass } from "@/components/cta-button-class";
 import { LandingAuth } from "@/components/landing-auth";
 import { PendingLink } from "@/components/pending-link";
 import { SiteFooter } from "@/components/site-footer";
@@ -61,25 +62,36 @@ export default function Home() {
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  <PendingLink
-                    href="/dashboard"
-                    className="rounded-full bg-[#A089E6] px-5 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#8b6fd4]"
-                  >
-                    Get Started <span aria-hidden="true">&rarr;</span>
+                  <PendingLink href="/how-to-use" className={ctaButtonClass}>
+                    <BookOpen
+                      size={18}
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    />
+                    How to use
+                  </PendingLink>
+                  <PendingLink href="/dashboard" className={ctaButtonClass}>
+                    Get Started
+                    <ArrowRight
+                      size={18}
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                      className="transition-transform duration-200 group-hover:translate-x-0.5"
+                    />
                   </PendingLink>
                 </div>
               </div>
 
               <div
                 id="how-it-works"
-                className="mt-2 grid grid-cols-1 gap-4 px-2 md:mt-3 md:grid-cols-3 md:px-4"
+                className="mx-auto mt-2 grid w-full max-w-4xl grid-cols-1 gap-4 px-2 md:mt-3 md:grid-cols-3 md:px-4"
               >
                 <article className="flex flex-col gap-2 rounded-2xl border border-[#A089E6]/15 bg-white/4 p-5 transition-all hover:border-[#A089E6]/40">
                   <div className="w-fit rounded-lg bg-[#A089E6]/10 p-1.5 text-[#A089E6]">
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
-                      className="h-8 w-8"
+                      className="h-5 w-5"
                       aria-hidden="true"
                     >
                       <path
@@ -107,7 +119,7 @@ export default function Home() {
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
-                      className="h-8 w-8"
+                      className="h-5 w-5"
                       aria-hidden="true"
                     >
                       <path
@@ -140,7 +152,7 @@ export default function Home() {
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
-                      className="h-8 w-8"
+                      className="h-5 w-5"
                       aria-hidden="true"
                     >
                       <path

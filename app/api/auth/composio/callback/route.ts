@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getActiveGmailConnection } from "@/lib/composio";
 import { saveIntegration, upsertUser } from "@/db/queries";
+import { sanitizeReturnTo } from "@/lib/utils";
 
 const GMAIL_CONNECTED_STATUS = "connected";
 const GMAIL_FAILED_STATUS = "failed";
@@ -15,9 +16,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  const searchParams = new URL(request.url).searchParams;
+  const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
+
   try {
     const email = session.user.email;
-    const status = new URL(request.url).searchParams.get("status");
+    const status = searchParams.get("status");
 
     if (!email) {
       throw new Error("Unable to resolve the user's email address.");
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
     await saveIntegration(userId, { connectedAccountId: connection.id });
 
     return NextResponse.redirect(
-      getDashboardUrl(request, GMAIL_CONNECTED_STATUS),
+      getReturnUrl(request, returnTo, GMAIL_CONNECTED_STATUS),
     );
   } catch (error) {
     const message =
@@ -47,17 +51,19 @@ export async function GET(request: Request) {
     console.error(error);
 
     return NextResponse.redirect(
-      getDashboardUrl(request, GMAIL_FAILED_STATUS, message),
+      getReturnUrl(request, returnTo, GMAIL_FAILED_STATUS, message),
     );
   }
 }
 
-function getDashboardUrl(
+function getReturnUrl(
   request: Request,
+  returnTo: string,
   gmailStatus: string,
   errorMessage?: string,
 ) {
-  const url = new URL(`/dashboard?gmail=${gmailStatus}`, request.url);
+  const url = new URL(returnTo, request.url);
+  url.searchParams.set("gmail", gmailStatus);
 
   if (errorMessage) {
     url.searchParams.set("gmailError", errorMessage);

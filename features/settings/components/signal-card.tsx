@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { SignalQrModal } from "@/components/dashboard/signal-qr-modal";
 
 export type SignalIntegrationCardProps = {
@@ -89,7 +90,7 @@ export function SignalIntegrationCard({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <Button type="submit" className="w-full sm:w-auto">Save Signal Numbers</Button>
+                        <SubmitButton className="w-full sm:w-auto">Save Signal Numbers</SubmitButton>
                     </div>
                 </form>
 

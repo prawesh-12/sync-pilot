@@ -1,7 +1,5 @@
-"use client";
-
 import Image from "next/image";
-import { PendingLink } from "@/components/pending-link";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const LOGO_SRC = "/logo.png";
@@ -37,7 +35,7 @@ export function BrandLogo({
         priority={size === "md"}
       />
       {showWordmark ? (
-        <span className="text-sm font-semibold uppercase tracking-[0.28em] text-white">
+        <span className="text-lg font-semibold uppercase tracking-widest text-white">
           SyncPilot
         </span>
       ) : null}
@@ -51,9 +49,9 @@ export function BrandLogo({
 
   if (href) {
     return (
-      <PendingLink href={href} className={wrapperClassName}>
+      <Link href={href} className={wrapperClassName}>
         {content}
-      </PendingLink>
+      </Link>
     );
   }
 

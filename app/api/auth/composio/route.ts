@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { initiateGmailConnection } from "@/lib/composio";
+import { sanitizeReturnTo } from "@/lib/utils";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -10,11 +11,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const callbackUrl = new URL(
-    "/api/auth/composio/callback",
-    request.url,
-  ).toString();
-  const connection = await initiateGmailConnection(userId, callbackUrl);
+  const requestUrl = new URL(request.url);
+  const returnTo = sanitizeReturnTo(requestUrl.searchParams.get("returnTo"));
+  const callback = new URL("/api/auth/composio/callback", request.url);
+  callback.searchParams.set("returnTo", returnTo);
+  const connection = await initiateGmailConnection(userId, callback.toString());
 
   if (!connection.redirectUrl) {
     return NextResponse.json(
