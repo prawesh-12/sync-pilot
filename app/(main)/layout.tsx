@@ -1,4 +1,4 @@
-import { ClerkProvider } from "@clerk/nextjs";
+import { SessionProvider } from "next-auth/react";
 import { Navbar } from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -8,10 +8,10 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <SessionProvider>
       <Navbar />
       {children}
       <SiteFooter />
-    </ClerkProvider>
+    </SessionProvider>
   );
 }

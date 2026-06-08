@@ -1,4 +1,3 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PendingLink } from "@/components/pending-link";
@@ -12,6 +11,7 @@ import {
   upsertSignalIntegration,
   upsertUser,
 } from "@/db/queries";
+import { auth } from "@/auth";
 import { buildSignalDeviceName } from "@/features/signal/signal";
 import { EmailIntegrationCard } from "@/features/settings/components/email-card";
 import { SignalIntegrationCard } from "@/features/settings/components/signal-card";
@@ -66,7 +66,8 @@ export async function SettingsPanel({
   async function disconnectGoogleAction() {
     "use server";
 
-    const { userId: actionUserId } = await auth();
+    const actionSession = await auth();
+    const actionUserId = actionSession?.user?.id;
 
     if (!actionUserId) {
       redirect("/sign-in");
@@ -86,19 +87,19 @@ export async function SettingsPanel({
   async function saveSignalIntegrationAction(formData: FormData) {
     "use server";
 
-    const { userId: actionUserId } = await auth();
+    const actionSession = await auth();
+    const actionUserId = actionSession?.user?.id;
 
     if (!actionUserId) {
       redirect("/sign-in");
     }
 
-    const user = await currentUser();
-    const email =
-      user?.primaryEmailAddress?.emailAddress ||
-      user?.emailAddresses[0]?.emailAddress;
+    const email = actionSession.user.email;
 
     if (!email) {
-      redirect(buildSignalSettingsUrl(variant, "failed", "Missing Clerk email."));
+      redirect(
+        buildSignalSettingsUrl(variant, "failed", "Missing account email."),
+      );
     }
 
     const senderNumberValue = normalizePhoneNumber(
@@ -143,7 +144,8 @@ export async function SettingsPanel({
   async function disconnectSignalAction() {
     "use server";
 
-    const { userId: actionUserId } = await auth();
+    const actionSession = await auth();
+    const actionUserId = actionSession?.user?.id;
 
     if (!actionUserId) {
       redirect("/sign-in");
@@ -187,6 +189,7 @@ export async function SettingsPanel({
   const emailSection = (
     <section className="space-y-2">
       <EmailIntegrationCard
+        userId={userId}
         isConnected={isConnected}
         integration={resolvedIntegration}
         disconnectAction={disconnectGoogleAction}

@@ -1,13 +1,9 @@
 import { getConnectedGmailAddress } from "@/features/gmail/gmail";
-import { type getIntegration } from "@/db/queries";
 
-export async function ConnectedEmailDetails({ integration }: { integration: NonNullable<Awaited<ReturnType<typeof getIntegration>>> }) {
+export async function ConnectedEmailDetails({ userId }: { userId: string }) {
     let email: string | null = null;
     try {
-        email = await getConnectedGmailAddress({
-            accessTokenEncrypted: integration.accessTokenEncrypted,
-            refreshTokenEncrypted: integration.refreshTokenEncrypted,
-        });
+        email = await getConnectedGmailAddress(userId);
     } catch (error) {
         console.error("[SETTINGS] Failed to resolve connected Gmail address");
         console.error(error);

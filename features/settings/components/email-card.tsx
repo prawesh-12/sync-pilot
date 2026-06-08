@@ -8,12 +8,13 @@ import { ConnectedEmailDetails } from "./connected-email-details";
 import { type getIntegration } from "@/db/queries";
 
 type EmailIntegrationCardProps = {
+    userId: string;
     isConnected: boolean;
     integration: NonNullable<Awaited<ReturnType<typeof getIntegration>>> | null;
     disconnectAction: () => Promise<void>;
 };
 
-export function EmailIntegrationCard({ isConnected, integration, disconnectAction }: EmailIntegrationCardProps) {
+export function EmailIntegrationCard({ userId, isConnected, integration, disconnectAction }: EmailIntegrationCardProps) {
     return (
         <Card className="border-emerald-500/20 bg-emerald-500/3">
             <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -25,7 +26,7 @@ export function EmailIntegrationCard({ isConnected, integration, disconnectActio
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="default">Connected</Badge>
                         <Suspense fallback={<Skeleton width="150px" height="20px" />}>
-                            <ConnectedEmailDetails integration={integration} />
+                            <ConnectedEmailDetails userId={userId} />
                         </Suspense>
                     </div>
                 ) : (
@@ -38,7 +39,7 @@ export function EmailIntegrationCard({ isConnected, integration, disconnectActio
                 <div className="flex flex-wrap items-center gap-3">
                     {!isConnected ? (
                         <Button asChild>
-                            <Link href="/api/auth/google">Connect Google Account</Link>
+                            <Link href="/api/auth/composio">Connect Google Account</Link>
                         </Button>
                     ) : (
                         <form action={disconnectAction} className="w-full sm:w-auto">

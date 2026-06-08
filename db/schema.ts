@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const PLAN_VALUES = ["free", "pro"] as const;
-export const PROVIDER_VALUES = ["gmail"] as const;
+export const PROVIDER_VALUES = ["composio"] as const;
 export const RUN_STATUS_VALUES = ["success", "error"] as const;
 
 export type PlanValue = (typeof PLAN_VALUES)[number];
@@ -34,9 +34,10 @@ export const integrations = pgTable(
         provider: text("provider")
             .$type<ProviderValue>()
             .notNull()
-            .default("gmail"),
-        accessTokenEncrypted: text("access_token_encrypted").notNull(),
-        refreshTokenEncrypted: text("refresh_token_encrypted").notNull(),
+            .default("composio"),
+        connectedAccountId: text("connected_account_id"),
+        accessTokenEncrypted: text("access_token_encrypted"),
+        refreshTokenEncrypted: text("refresh_token_encrypted"),
         lastRunTimestamp: timestamp("last_run_timestamp", {
             withTimezone: true,
         }),

@@ -52,7 +52,7 @@ export default function TermsPage() {
       <section>
         <h2>3. Account Registration</h2>
         <p>
-          You sign in through Clerk. You are responsible for maintaining the
+          You sign in with Google. You are responsible for maintaining the
           security of your account credentials and for all activity under your
           account. Notify us promptly if you suspect unauthorized access.
         </p>

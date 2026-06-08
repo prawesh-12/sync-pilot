@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { Suspense } from "react";
 import { DashboardSettingsModal } from "@/components/dashboard/dashboard-settings-modal";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
@@ -24,7 +24,8 @@ type DashboardPageProps = {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const [{ userId }, params] = await Promise.all([auth(), searchParams]);
+  const [session, params] = await Promise.all([auth(), searchParams]);
+  const userId = session?.user?.id;
 
   if (!userId) {
     redirect("/sign-in");

@@ -25,8 +25,8 @@ export default function PrivacyPage() {
         <p>When you use SyncPilot, we may collect the following:</p>
         <ul>
           <li>
-            <strong>Account information:</strong> Your email address and user
-            identifier provided through Clerk when you sign up or sign in.
+            <strong>Account information:</strong> Your email address and Google
+            account identifier provided when you sign in with Google.
           </li>
           <li>
             <strong>Gmail integration data:</strong> OAuth access and refresh
@@ -91,7 +91,8 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong>Clerk</strong> — authentication and session management
+            <strong>Google Sign-In</strong> — authentication and session
+            management
           </li>
           <li>
             <strong>Google (Gmail API)</strong> — read-only access to your inbox
@@ -163,7 +164,7 @@ export default function PrivacyPage() {
         <p>You can:</p>
         <ul>
           <li>Disconnect Gmail or Signal at any time from Settings</li>
-          <li>Manage your account through Clerk&apos;s account controls</li>
+          <li>Manage your account through your Google account controls</li>
           <li>Stop using the service by disconnecting integrations and signing out</li>
         </ul>
         <p>
@@ -176,7 +177,7 @@ export default function PrivacyPage() {
       <section>
         <h2>8. Cookies</h2>
         <p>
-          SyncPilot uses session cookies provided by Clerk to keep you signed in.
+          SyncPilot uses session cookies provided by Auth.js to keep you signed in.
           We do not use third-party advertising or analytics tracking cookies.
         </p>
       </section>

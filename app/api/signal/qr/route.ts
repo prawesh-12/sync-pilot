@@ -1,12 +1,13 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { buildSignalDeviceName, getSignalQrCodeLink } from "@/features/signal/signal";
 import { getSignalIntegration } from "@/db/queries";
 
 const SIGNAL_QR_TIMEOUT_MS = 15_000;
 
 export async function GET() {
-    const { userId } = await auth();
+    const session = await auth();
+    const userId = session?.user?.id;
 
     if (!userId) {
         return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

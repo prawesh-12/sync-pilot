@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { createTextCompletion } from "@/features/ai/groq";
 import {
   buildSyncPilotSystemPrompt,
@@ -27,7 +27,8 @@ function parseRequestBody(body: AgentRunRequest) {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const session = await auth();
+  const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

@@ -3,12 +3,12 @@ import { z } from "zod";
 const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 
 const envSchema = z.object({
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().trim().optional().default(""),
-    CLERK_SECRET_KEY: z.string().trim().optional().default(""),
+    AUTH_SECRET: z.string().trim().optional().default(""),
+    AUTH_GOOGLE_ID: z.string().trim().optional().default(""),
+    AUTH_GOOGLE_SECRET: z.string().trim().optional().default(""),
     DATABASE_URL: z.string().trim().optional().default(""),
-    GOOGLE_CLIENT_ID: z.string().trim().optional().default(""),
-    GOOGLE_CLIENT_SECRET: z.string().trim().optional().default(""),
-    GOOGLE_REDIRECT_URI: z.string().trim().optional().default(""),
+    COMPOSIO_API_KEY: z.string().trim().optional().default(""),
+    COMPOSIO_GMAIL_AUTH_CONFIG_ID: z.string().trim().optional().default(""),
     ENCRYPTION_KEY: z.string().trim().optional().default(""),
     GROQ_API_KEY: z.string().trim().optional().default(""),
     GROQ_MODEL: z
@@ -47,35 +47,28 @@ export function isDatabaseConfigured() {
     return Boolean(getDatabaseUrl());
 }
 
-export function getGoogleOAuthConfig() {
+export function getComposioConfig() {
     const env = getEnv();
 
-    if (!env.GOOGLE_CLIENT_ID) {
-        throw new Error("GOOGLE_CLIENT_ID is not configured.");
+    if (!env.COMPOSIO_API_KEY) {
+        throw new Error("COMPOSIO_API_KEY is not configured.");
     }
 
-    if (!env.GOOGLE_CLIENT_SECRET) {
-        throw new Error("GOOGLE_CLIENT_SECRET is not configured.");
-    }
-
-    if (!env.GOOGLE_REDIRECT_URI) {
-        throw new Error("GOOGLE_REDIRECT_URI is not configured.");
+    if (!env.COMPOSIO_GMAIL_AUTH_CONFIG_ID) {
+        throw new Error("COMPOSIO_GMAIL_AUTH_CONFIG_ID is not configured.");
     }
 
     return {
-        clientId: env.GOOGLE_CLIENT_ID,
-        clientSecret: env.GOOGLE_CLIENT_SECRET,
-        redirectUri: env.GOOGLE_REDIRECT_URI,
+        apiKey: env.COMPOSIO_API_KEY,
+        gmailAuthConfigId: env.COMPOSIO_GMAIL_AUTH_CONFIG_ID,
     };
 }
 
-export function isGoogleOAuthConfigured() {
+export function isComposioConfigured() {
     const env = getEnv();
 
     return Boolean(
-        env.GOOGLE_CLIENT_ID &&
-        env.GOOGLE_CLIENT_SECRET &&
-        env.GOOGLE_REDIRECT_URI,
+        env.COMPOSIO_API_KEY && env.COMPOSIO_GMAIL_AUTH_CONFIG_ID,
     );
 }
 

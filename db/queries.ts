@@ -9,11 +9,10 @@ import {
     type RunStatusValue,
 } from "@/db/schema";
 
-const GMAIL_PROVIDER = "gmail";
+const GMAIL_PROVIDER = "composio";
 
-type EncryptedTokens = {
-    accessTokenEncrypted: string;
-    refreshTokenEncrypted: string;
+type ComposioIntegration = {
+    connectedAccountId: string;
 };
 
 type AgentRunResult = {
@@ -54,7 +53,7 @@ export async function upsertUser(user: AppUser) {
 
 export async function saveIntegration(
     userId: string,
-    encryptedTokens: EncryptedTokens,
+    composioIntegration: ComposioIntegration,
 ) {
     const db = getDb();
     const [integration] = await db
@@ -62,14 +61,12 @@ export async function saveIntegration(
         .values({
             userId,
             provider: GMAIL_PROVIDER,
-            accessTokenEncrypted: encryptedTokens.accessTokenEncrypted,
-            refreshTokenEncrypted: encryptedTokens.refreshTokenEncrypted,
+            connectedAccountId: composioIntegration.connectedAccountId,
         })
         .onConflictDoUpdate({
             target: [integrations.userId, integrations.provider],
             set: {
-                accessTokenEncrypted: encryptedTokens.accessTokenEncrypted,
-                refreshTokenEncrypted: encryptedTokens.refreshTokenEncrypted,
+                connectedAccountId: composioIntegration.connectedAccountId,
             },
         })
         .returning();
@@ -81,8 +78,7 @@ export const getIntegration = cache(async function getIntegration(userId: string
     const db = getDb();
     const [integration] = await db
         .select({
-            accessTokenEncrypted: integrations.accessTokenEncrypted,
-            refreshTokenEncrypted: integrations.refreshTokenEncrypted,
+            connectedAccountId: integrations.connectedAccountId,
             lastRunTimestamp: integrations.lastRunTimestamp,
             provider: integrations.provider,
         })
