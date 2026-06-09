@@ -54,9 +54,16 @@ export async function executeGmailTool(
     args: Record<string, unknown> = {},
 ): Promise<GmailToolResult> {
     const composio = getComposio();
+    const { gmailToolkitVersion } = getComposioConfig();
+    // Composio requires a toolkit version for manual execution. Pin one via
+    // COMPOSIO_GMAIL_TOOLKIT_VERSION (recommended for production); otherwise
+    // fall back to "latest" with the version check explicitly skipped.
     const response = await composio.tools.execute(slug, {
         userId,
         arguments: args,
+        ...(gmailToolkitVersion
+            ? { version: gmailToolkitVersion }
+            : { dangerouslySkipVersionCheck: true }),
     });
 
     if (!response.successful) {

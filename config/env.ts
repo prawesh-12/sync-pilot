@@ -9,6 +9,7 @@ const envSchema = z.object({
     DATABASE_URL: z.string().trim().optional().default(""),
     COMPOSIO_API_KEY: z.string().trim().optional().default(""),
     COMPOSIO_GMAIL_AUTH_CONFIG_ID: z.string().trim().optional().default(""),
+    COMPOSIO_GMAIL_TOOLKIT_VERSION: z.string().trim().optional().default(""),
     ENCRYPTION_KEY: z.string().trim().optional().default(""),
     GROQ_API_KEY: z.string().trim().optional().default(""),
     GROQ_MODEL: z
@@ -61,6 +62,7 @@ export function getComposioConfig() {
     return {
         apiKey: env.COMPOSIO_API_KEY,
         gmailAuthConfigId: env.COMPOSIO_GMAIL_AUTH_CONFIG_ID,
+        gmailToolkitVersion: env.COMPOSIO_GMAIL_TOOLKIT_VERSION,
     };
 }
 

@@ -14,13 +14,11 @@ export type GmailEmail = {
     body: string;
 };
 
+const EMAIL_ADDRESS_KEYS = ["emailAddress", "email_address", "email"];
+
 export async function getConnectedGmailAddress(userId: string) {
     const result = await executeGmailTool(userId, GMAIL_GET_PROFILE_TOOL, {});
-    const emailAddress = readString(result.data, [
-        "emailAddress",
-        "email_address",
-        "email",
-    ]);
+    const emailAddress = findString(result.data, EMAIL_ADDRESS_KEYS);
 
     return emailAddress || null;
 }
@@ -151,6 +149,43 @@ function readString(record: Record<string, unknown>, keys: string[]) {
 
         if (typeof value === "string" && value.trim()) {
             return value.trim();
+        }
+    }
+
+    return "";
+}
+
+// Composio wraps tool output in varying nesting (e.g. data.response_data.*),
+// so search the whole response tree for the first matching string field.
+function findString(value: unknown, keys: string[]): string {
+    if (!value || typeof value !== "object") {
+        return "";
+    }
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const found = findString(entry, keys);
+
+            if (found) {
+                return found;
+            }
+        }
+
+        return "";
+    }
+
+    const record = value as Record<string, unknown>;
+    const direct = readString(record, keys);
+
+    if (direct) {
+        return direct;
+    }
+
+    for (const nested of Object.values(record)) {
+        const found = findString(nested, keys);
+
+        if (found) {
+            return found;
         }
     }
 
