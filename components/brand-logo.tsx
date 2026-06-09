@@ -35,7 +35,7 @@ export function BrandLogo({
         priority={size === "md"}
       />
       {showWordmark ? (
-        <span className="text-lg font-semibold uppercase tracking-widest text-white">
+        <span className="whitespace-nowrap text-base font-semibold uppercase tracking-wider text-white sm:text-lg sm:tracking-widest">
           SyncPilot
         </span>
       ) : null}

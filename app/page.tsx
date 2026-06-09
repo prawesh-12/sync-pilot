@@ -16,8 +16,8 @@ export default function Home() {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-[#A089E6]/10 bg-[#07070f]/90 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <BrandLogo />
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 overflow-hidden px-4 py-4 sm:gap-4 sm:px-6">
+          <BrandLogo className="shrink-0" />
           <LandingAuth />
         </div>
       </header>
@@ -46,7 +46,7 @@ export default function Home() {
                       alt=""
                       width={100}
                       height={100}
-                      className="pointer-events-none absolute -top-7 -right-20"
+                      className="pointer-events-none absolute -top-3 -right-10 h-auto w-14 md:-top-7 md:-right-20 md:w-25"
                       aria-hidden="true"
                     />
                     <span className="bg-linear-to-r from-white to-[#A089E6] bg-clip-text text-transparent">

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 
 const PUBLIC_ROUTE_PATTERNS = [
   /^\/$/,
+  /^\/how-to-use/,
   /^\/privacy/,
   /^\/terms/,
   /^\/sign-in/,
