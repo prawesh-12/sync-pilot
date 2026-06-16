@@ -102,6 +102,14 @@ export async function sendDraftReadyMessage(
     return dispatchSignalMessage(buildDraftReadyMessage(input), userId);
 }
 
+// Sends a plain confirmation/error line back to the user (e.g. after a Signal reply).
+export async function sendSignalNotice(
+    userId: string,
+    message: string,
+): Promise<SignalSendResult> {
+    return dispatchSignalMessage(message, userId);
+}
+
 async function dispatchSignalMessage(
     message: string,
     userId: string,

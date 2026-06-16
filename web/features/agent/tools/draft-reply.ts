@@ -52,11 +52,20 @@ async function draftAndQueue(
       body,
     });
     await markEmailDrafted(ctx.userId, ctx.email.messageId, draftId);
+    // Persist everything the Signal reply handler needs to send/discard/revise
+    // later without re-fetching the email or guessing the Gmail account.
     const pending = await savePendingAction({
       userId: ctx.userId,
       gmailMessageId: ctx.email.messageId,
       actionType: "draft_reply",
-      payload: { draftId, body },
+      payload: {
+        draftId,
+        body,
+        connectedAccountId: account.connectedAccountId,
+        threadId: ctx.email.threadId,
+        replyTo: ctx.email.from,
+        subject: ctx.email.subject,
+      },
     });
 
     return notifyDraftReady(ctx, body, pending?.refCode);

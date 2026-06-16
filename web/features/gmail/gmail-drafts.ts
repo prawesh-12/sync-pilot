@@ -3,6 +3,8 @@ import { findString } from "@/features/gmail/parse";
 import type { GmailActionAccount } from "@/features/gmail/gmail";
 
 const GMAIL_CREATE_DRAFT_TOOL = "GMAIL_CREATE_EMAIL_DRAFT";
+const GMAIL_SEND_DRAFT_TOOL = "GMAIL_SEND_DRAFT";
+const GMAIL_DELETE_DRAFT_TOOL = "GMAIL_DELETE_DRAFT";
 const EMAIL_ADDRESS_PATTERN = /<([^>]+)>/;
 
 type DraftReplyInput = {
@@ -36,6 +38,33 @@ export async function createDraftReply(
   }
 
   return draftId;
+}
+
+// Sends an existing draft to the recipients already on it. Used after the user
+// confirms on Signal; never called automatically during triage.
+export async function sendDraftReply(
+  account: GmailActionAccount,
+  draftId: string,
+): Promise<void> {
+  await executeGmailTool(
+    account.userId,
+    GMAIL_SEND_DRAFT_TOOL,
+    { draft_id: draftId },
+    account.connectedAccountId,
+  );
+}
+
+// Permanently deletes a draft when the user discards or revises it on Signal.
+export async function deleteDraftReply(
+  account: GmailActionAccount,
+  draftId: string,
+): Promise<void> {
+  await executeGmailTool(
+    account.userId,
+    GMAIL_DELETE_DRAFT_TOOL,
+    { draft_id: draftId },
+    account.connectedAccountId,
+  );
 }
 
 // Sender headers look like "Name <addr@x.com>"; pull out the address.
