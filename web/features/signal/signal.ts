@@ -3,6 +3,7 @@ import { getSignalIntegration } from "@/db/queries";
 import { getSignalConfig, isSignalConfigured } from "@/config/env";
 
 const SIGNAL_MESSAGE_TITLE = "New Email Summary";
+const SIGNAL_URGENT_MESSAGE_TITLE = "🚨 URGENT";
 const SIGNAL_SEND_PATH = "v2/send";
 const SIGNAL_QR_CODE_LINK_PATH = "v1/qrcodelink";
 const SIGNAL_REQUEST_TIMEOUT_MS = 10_000;
@@ -33,15 +34,26 @@ type SignalSendResult = {
     statusCode?: number;
 };
 
-function buildSignalMessage(summary: string, subject: string) {
+type SignalMessageOptions = {
+    urgent?: boolean;
+};
+
+function buildSignalMessage(
+    summary: string,
+    subject: string,
+    options?: SignalMessageOptions,
+) {
     const parsedMessage = signalMessageSchema.parse({
         summary,
         subject,
     });
     const messageSubject = parsedMessage.subject || "(No subject)";
+    const title = options?.urgent
+        ? SIGNAL_URGENT_MESSAGE_TITLE
+        : SIGNAL_MESSAGE_TITLE;
 
     return [
-        SIGNAL_MESSAGE_TITLE,
+        title,
         `Subject: ${messageSubject}`,
         "",
         parsedMessage.summary,
@@ -52,6 +64,7 @@ export async function sendSignalMessage(
     summary: string,
     subject: string,
     userId: string,
+    options?: SignalMessageOptions,
 ): Promise<SignalSendResult> {
     if (!isSignalConfigured()) {
         const error = "Signal is not configured.";
@@ -103,7 +116,7 @@ export async function sendSignalMessage(
             body: JSON.stringify({
                 number: senderNumber,
                 recipients: [recipientNumber],
-                message: buildSignalMessage(summary, subject),
+                message: buildSignalMessage(summary, subject, options),
             }),
             cache: "no-store",
             signal: AbortSignal.timeout(SIGNAL_REQUEST_TIMEOUT_MS),

@@ -44,6 +44,5 @@ next-env.d.ts
 extras
 .agents/
 .claude/
-
 # signal
 server/signal-cli-config/signal-cli-config/data

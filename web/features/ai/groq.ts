@@ -18,6 +18,20 @@ type TextCompletionResult = {
   } | null;
 };
 
+// Shared Groq model handle for tool-calling agents (e.g. the triage loop).
+export function getGroqModel() {
+  if (!isGroqConfigured()) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+
+  const config = getGroqConfig();
+  const groq = createGroq({
+    apiKey: config.apiKey,
+  });
+
+  return groq(config.model);
+}
+
 export async function createTextCompletion({
   system,
   prompt,

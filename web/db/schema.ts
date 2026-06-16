@@ -1,6 +1,7 @@
 import {
     boolean,
     integer,
+    jsonb,
     pgTable,
     text,
     timestamp,
@@ -11,10 +12,21 @@ import {
 export const PLAN_VALUES = ["free", "pro"] as const;
 export const PROVIDER_VALUES = ["composio"] as const;
 export const RUN_STATUS_VALUES = ["success", "error"] as const;
+// Includes later-phase actions now so the decision column type stays stable.
+export const DECISION_VALUES = [
+    "ignore",
+    "summarize_notify",
+    "escalate",
+    "archive",
+    "apply_label",
+    "snooze",
+    "draft_reply",
+] as const;
 
 export type PlanValue = (typeof PLAN_VALUES)[number];
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 export type RunStatusValue = (typeof RUN_STATUS_VALUES)[number];
+export type DecisionValue = (typeof DECISION_VALUES)[number];
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(),
@@ -97,4 +109,22 @@ export const agentRuns = pgTable("agent_runs", {
     summariesSent: integer("summaries_sent").notNull(),
     status: text("status").$type<RunStatusValue>().notNull(),
     ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One row per email per run so every agent action stays auditable.
+export const agentDecisions = pgTable("agent_decisions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id")
+        .notNull()
+        .references(() => agentRuns.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    gmailMessageId: text("gmail_message_id").notNull(),
+    decision: text("decision").$type<DecisionValue>().notNull(),
+    reasoning: text("reasoning").notNull(),
+    toolCalls: jsonb("tool_calls"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
 });

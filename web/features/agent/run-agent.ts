@@ -1,13 +1,28 @@
+import { generateText, stepCountIs, type LanguageModel } from "ai";
 import { fetchEmailsInTimeWindow, type GmailEmail } from "@/features/gmail/gmail";
-import { sendSignalMessage } from "@/features/signal/signal";
-import { summariseEmail } from "@/features/ai/summarise";
+import { getGroqModel } from "@/features/ai/groq";
+import {
+    buildTriagePrompt,
+    buildTriageUserMessage,
+} from "@/features/agent/triage-prompt";
+import {
+    buildTriageTools,
+    createDecisionRecorder,
+    type RecordedDecision,
+} from "@/features/agent/tools";
+import { summariseAndNotify } from "@/features/agent/tools/notify";
 import {
     getGmailAccountById,
+    saveAgentDecisions,
     saveAgentRun,
     updateGmailAccountLastRun,
 } from "@/db/queries";
+import type { DecisionValue } from "@/db/schema";
 
 const EMAIL_PROCESS_DELAY_MS = 500;
+// One-shot triage: force a single tool call, no follow-up model turn.
+const TRIAGE_MAX_STEPS = 1;
+const DEFAULT_USER_LABEL = "the user";
 
 export type AgentRunSummary = {
     emailsFound: number;
@@ -15,8 +30,12 @@ export type AgentRunSummary = {
     status: "success" | "error";
 };
 
-type ProcessEmailResult = {
-    summarySent: boolean;
+type EmailDecision = {
+    gmailMessageId: string;
+    decision: DecisionValue;
+    reasoning: string;
+    toolCalls: unknown;
+    notified: boolean;
 };
 
 export async function runAgent(
@@ -26,35 +45,58 @@ export async function runAgent(
     const windowEnd = new Date();
 
     try {
-        console.log(
-            `[CRON] Starting agent run for userId: ${userId}, integrationId: ${integrationId}`,
-        );
-
-        const account = await resolveGmailAccount(userId, integrationId);
-        const emails = await fetchEmailsInTimeWindow(account, windowEnd);
-        console.log(
-            `[GMAIL] Found ${emails.length} emails in current sync window`,
-        );
-
-        const { summary } = await processEmails(userId, emails);
-        await saveRunResult(userId, summary);
-        logRunComplete(summary.summariesSent);
-
-        return summary;
+        return await executeAgentRun(userId, integrationId, windowEnd);
     } catch (error) {
-        const message = getErrorMessage(error);
-        console.error(
-            `[CRON] Agent run failed for userId: ${userId}, integrationId: ${integrationId}`,
-        );
-        console.error(error);
-
-        const result = buildErrorResult();
-        await saveRunResult(userId, result, message);
-
-        return result;
+        return await handleRunFailure(userId, integrationId, error);
     } finally {
         await persistLastRunTimestamp(integrationId, windowEnd);
     }
+}
+
+async function executeAgentRun(
+    userId: string,
+    integrationId: string,
+    windowEnd: Date,
+): Promise<AgentRunSummary> {
+    console.log(
+        `[CRON] Starting agent run for userId: ${userId}, integrationId: ${integrationId}`,
+    );
+
+    const account = await resolveGmailAccount(userId, integrationId);
+    const emails = await fetchEmailsInTimeWindow(account, windowEnd);
+    console.log(`[GMAIL] Found ${emails.length} emails in current sync window`);
+
+    const { summary, decisions } = await processEmails(
+        userId,
+        account.emailAddress,
+        emails,
+    );
+    const run = await saveRunResult(userId, summary);
+
+    if (run) {
+        await persistDecisions(run.id, userId, decisions);
+    }
+
+    console.log(`[CRON] Run complete - ${summary.summariesSent} summaries sent`);
+
+    return summary;
+}
+
+async function handleRunFailure(
+    userId: string,
+    integrationId: string,
+    error: unknown,
+): Promise<AgentRunSummary> {
+    const message = getErrorMessage(error);
+    console.error(
+        `[CRON] Agent run failed for userId: ${userId}, integrationId: ${integrationId} - ${message}`,
+    );
+    console.error(error);
+
+    const result = buildErrorResult();
+    await saveRunResult(userId, result, message);
+
+    return result;
 }
 
 async function resolveGmailAccount(userId: string, integrationId: string) {
@@ -75,70 +117,144 @@ async function resolveGmailAccount(userId: string, integrationId: string) {
     return {
         userId,
         connectedAccountId: account.connectedAccountId,
+        emailAddress: account.emailAddress,
         lastRunTimestamp: account.lastRunTimestamp,
     };
 }
 
 async function processEmails(
     userId: string,
+    emailAddress: string | null,
     emails: GmailEmail[],
-): Promise<{ summary: AgentRunSummary }> {
-    let summariesSent = 0;
+): Promise<{ summary: AgentRunSummary; decisions: EmailDecision[] }> {
+    const systemPrompt = buildTriagePrompt(emailAddress || DEFAULT_USER_LABEL);
+    const model = getGroqModel();
+    const decisions: EmailDecision[] = [];
 
     for (const [index, email] of emails.entries()) {
-        const result = await processEmail(userId, email);
-
-        if (result.summarySent) {
-            summariesSent += 1;
-        }
+        const decision = await triageEmail(model, systemPrompt, userId, email);
+        decisions.push(decision);
 
         if (index < emails.length - 1) {
             await delay(EMAIL_PROCESS_DELAY_MS);
         }
     }
 
+    return { summary: buildRunSummary(emails.length, decisions), decisions };
+}
+
+function buildRunSummary(
+    emailsFound: number,
+    decisions: EmailDecision[],
+): AgentRunSummary {
     return {
-        summary: {
-            emailsFound: emails.length,
-            summariesSent,
-            status: "success",
-        },
+        emailsFound,
+        summariesSent: decisions.filter((entry) => entry.notified).length,
+        status: "success",
     };
 }
 
-async function processEmail(
+async function triageEmail(
+    model: LanguageModel,
+    systemPrompt: string,
     userId: string,
     email: GmailEmail,
-): Promise<ProcessEmailResult> {
-    const summary = await summariseEmailWithLogging(email);
+): Promise<EmailDecision> {
+    const recorder = createDecisionRecorder();
+    await runTriageModel(model, systemPrompt, userId, email, recorder.record);
 
-    if (!summary) {
-        return {
-            summarySent: false,
-        };
+    const recorded = recorder.get();
+
+    if (recorded) {
+        return buildDecision(email, recorded);
     }
 
-    const signalResult = await sendSignalMessage(
-        summary,
-        email.subject,
-        userId,
-    );
+    // Model picked no tool (error or empty turn) — never drop the email.
+    return fallbackToSummary(userId, email);
+}
 
-    if (!signalResult.ok) {
+async function runTriageModel(
+    model: LanguageModel,
+    systemPrompt: string,
+    userId: string,
+    email: GmailEmail,
+    record: (decision: RecordedDecision) => void,
+) {
+    const tools = buildTriageTools({ email, userId, record });
+
+    try {
+        console.log(`[AGENT] Triaging: ${email.subject}`);
+
+        await generateText({
+            model,
+            system: systemPrompt,
+            prompt: buildTriageUserMessage(email),
+            tools,
+            toolChoice: "required",
+            stopWhen: stepCountIs(TRIAGE_MAX_STEPS),
+        });
+    } catch (error) {
         console.error(
-            `[SIGNAL] Failed to send summary for: ${email.subject} (${signalResult.error || "Unknown error"})`,
+            `[AGENT] Triage failed for userId: ${userId}, email: ${email.subject}`,
         );
-
-        return {
-            summarySent: false,
-        };
+        console.error(error);
     }
+}
 
-    console.log(`[SIGNAL] Sent summary for: ${email.subject}`);
+function buildDecision(
+    email: GmailEmail,
+    recorded: RecordedDecision,
+): EmailDecision {
+    return {
+        gmailMessageId: email.messageId,
+        decision: recorded.decision,
+        reasoning: recorded.reasoning,
+        toolCalls: recorded.toolCall,
+        notified: recorded.notified,
+    };
+}
+
+async function fallbackToSummary(
+    userId: string,
+    email: GmailEmail,
+): Promise<EmailDecision> {
+    const notified = await summariseAndNotify(email, userId);
 
     return {
-        summarySent: signalResult.ok,
+        gmailMessageId: email.messageId,
+        decision: "summarize_notify",
+        reasoning: "Triage produced no decision; defaulted to summary.",
+        toolCalls: { name: "summarizeAndNotify", args: {}, fallback: true },
+        notified,
     };
+}
+
+async function persistDecisions(
+    runId: string,
+    userId: string,
+    decisions: EmailDecision[],
+) {
+    if (decisions.length === 0) {
+        return;
+    }
+
+    try {
+        await saveAgentDecisions(
+            decisions.map((entry) => ({
+                runId,
+                userId,
+                gmailMessageId: entry.gmailMessageId,
+                decision: entry.decision,
+                reasoning: entry.reasoning,
+                toolCalls: entry.toolCalls,
+            })),
+        );
+    } catch (error) {
+        console.error(
+            `[CRON] Failed to persist agent decisions for runId: ${runId}`,
+        );
+        console.error(error);
+    }
 }
 
 async function persistLastRunTimestamp(
@@ -155,26 +271,13 @@ async function persistLastRunTimestamp(
     }
 }
 
-async function summariseEmailWithLogging(email: GmailEmail) {
-    try {
-        console.log(`[AI] Summarising email: ${email.subject}`);
-
-        return await summariseEmail(email);
-    } catch (error) {
-        console.error(`[AI] Failed to summarise email: ${email.subject}`);
-        console.error(error);
-
-        return "";
-    }
-}
-
 async function saveRunResult(
     userId: string,
     result: AgentRunSummary,
     errorMessage?: string,
 ) {
     try {
-        await saveAgentRun(userId, result);
+        return await saveAgentRun(userId, result);
     } catch (error) {
         console.error(
             `[CRON] Failed to persist agent run for userId: ${userId}`,
@@ -184,6 +287,8 @@ async function saveRunResult(
         if (errorMessage) {
             console.error(`[CRON] Original run error: ${errorMessage}`);
         }
+
+        return null;
     }
 }
 
@@ -193,10 +298,6 @@ function buildErrorResult(): AgentRunSummary {
         summariesSent: 0,
         status: "error",
     };
-}
-
-function logRunComplete(summariesSent: number) {
-    console.log(`[CRON] Run complete - ${summariesSent} summaries sent`);
 }
 
 function getErrorMessage(error: unknown) {
