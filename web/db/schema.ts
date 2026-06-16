@@ -12,7 +12,14 @@ import {
 export const PLAN_VALUES = ["free", "pro"] as const;
 export const PROVIDER_VALUES = ["composio"] as const;
 export const RUN_STATUS_VALUES = ["success", "error"] as const;
-// Includes later-phase actions now so the decision column type stays stable.
+// "drafted" is unused for now but listed to keep the status column type stable.
+export const PROCESSED_EMAIL_STATUS_VALUES = [
+    "active",
+    "snoozed",
+    "archived",
+    "drafted",
+] as const;
+// Lists every action up front so the decision column type stays stable.
 export const DECISION_VALUES = [
     "ignore",
     "summarize_notify",
@@ -27,6 +34,8 @@ export type PlanValue = (typeof PLAN_VALUES)[number];
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
 export type RunStatusValue = (typeof RUN_STATUS_VALUES)[number];
 export type DecisionValue = (typeof DECISION_VALUES)[number];
+export type ProcessedEmailStatusValue =
+    (typeof PROCESSED_EMAIL_STATUS_VALUES)[number];
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(),
@@ -95,6 +104,13 @@ export const processedEmails = pgTable("processed_emails", {
     userId: text("user_id")
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status")
+        .$type<ProcessedEmailStatusValue>()
+        .notNull()
+        .default("active"),
+    // Set only while snoozed; null once the email returns to triage.
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    gmailDraftId: text("gmail_draft_id"),
     processedAt: timestamp("processed_at", { withTimezone: true })
         .notNull()
         .defaultNow(),

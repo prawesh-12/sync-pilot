@@ -1,7 +1,13 @@
 import type { GmailEmail } from "@/features/gmail/gmail";
 
-// Subset of the schema's DecisionValue union covered by Phase 2 tools.
-export type DecisionName = "ignore" | "summarize_notify" | "escalate";
+// Mirrors the schema's DecisionValue union for the actions the agent can take.
+export type DecisionName =
+  | "ignore"
+  | "summarize_notify"
+  | "escalate"
+  | "archive"
+  | "apply_label"
+  | "snooze";
 
 export type RecordedDecision = {
   decision: DecisionName;
@@ -16,6 +22,7 @@ export type RecordedDecision = {
 export type TriageToolContext = {
   email: GmailEmail;
   userId: string;
+  connectedAccountId: string;
   // Tool calls this once; the recorder keeps only the first to enforce one decision.
   record: (decision: RecordedDecision) => void;
 };

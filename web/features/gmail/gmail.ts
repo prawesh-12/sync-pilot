@@ -1,7 +1,10 @@
 import { executeGmailTool } from "@/lib/composio";
+import { findString, firstArray, readString } from "@/features/gmail/parse";
 
 const GMAIL_FETCH_EMAILS_TOOL = "GMAIL_FETCH_EMAILS";
 const GMAIL_GET_PROFILE_TOOL = "GMAIL_GET_PROFILE";
+const GMAIL_FETCH_MESSAGE_TOOL = "GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID";
+const GMAIL_MESSAGE_FORMAT = "full";
 const GMAIL_MAX_RESULTS = 20;
 const DEFAULT_WINDOW_SECONDS = 15 * 60;
 const HTML_TAG_PATTERN = /<[a-z!/][\s\S]*>/i;
@@ -19,7 +22,14 @@ export type GmailAccountSource = {
     lastRunTimestamp: Date | null;
 };
 
+// Minimal account shape for tools that act on a single message.
+export type GmailActionAccount = {
+    userId: string;
+    connectedAccountId: string;
+};
+
 const EMAIL_ADDRESS_KEYS = ["emailAddress", "email_address", "email"];
+const BODY_KEYS = ["messageText", "message_text", "body", "snippet"];
 
 export async function getConnectedGmailAddress(
     userId: string,
@@ -67,6 +77,24 @@ export async function fetchEmailsInTimeWindow(
     );
 }
 
+// Re-fetches one message by id so a snoozed email can return to triage.
+export async function fetchEmailById(
+    account: GmailActionAccount,
+    messageId: string,
+): Promise<GmailEmail | null> {
+    const result = await executeGmailTool(
+        account.userId,
+        GMAIL_FETCH_MESSAGE_TOOL,
+        {
+            message_id: messageId,
+            format: GMAIL_MESSAGE_FORMAT,
+        },
+        account.connectedAccountId,
+    );
+
+    return mapFetchedMessage(result.data, messageId);
+}
+
 function getWindowStart(
     lastRunTimestamp: Date | null | undefined,
     windowEnd: Date,
@@ -100,11 +128,7 @@ function extractMessages(data: Record<string, unknown>): Record<string, unknown>
 }
 
 function mapMessage(message: Record<string, unknown>): GmailEmail | null {
-    const messageId = readString(message, [
-        "messageId",
-        "message_id",
-        "id",
-    ]);
+    const messageId = readString(message, ["messageId", "message_id", "id"]);
 
     if (!messageId) {
         return null;
@@ -118,20 +142,31 @@ function mapMessage(message: Record<string, unknown>): GmailEmail | null {
     };
 }
 
+// Single-message fetches nest fields unpredictably, so search the whole tree.
+function mapFetchedMessage(
+    data: Record<string, unknown>,
+    messageId: string,
+): GmailEmail {
+    return {
+        messageId,
+        subject: findString(data, ["subject"]) || "(No subject)",
+        from: findString(data, ["sender", "from"]) || "Unknown sender",
+        body: cleanBody(findString(data, BODY_KEYS)),
+    };
+}
+
 function getMessageBody(message: Record<string, unknown>) {
     const preview = message.preview;
     const previewBody =
         typeof preview === "object" && preview !== null
             ? readString(preview as Record<string, unknown>, ["body"])
             : "";
-    const rawBody =
-        readString(message, [
-            "messageText",
-            "message_text",
-            "body",
-            "snippet",
-        ]) || previewBody;
+    const rawBody = readString(message, BODY_KEYS) || previewBody;
 
+    return cleanBody(rawBody);
+}
+
+function cleanBody(rawBody: string) {
     if (!rawBody) {
         return "";
     }
@@ -141,70 +176,6 @@ function getMessageBody(message: Record<string, unknown>) {
     }
 
     return normalizeWhitespace(rawBody);
-}
-
-function firstArray(
-    record: Record<string, unknown>,
-    keys: string[],
-): unknown[] | null {
-    for (const key of keys) {
-        const value = record[key];
-
-        if (Array.isArray(value)) {
-            return value;
-        }
-    }
-
-    return null;
-}
-
-function readString(record: Record<string, unknown>, keys: string[]) {
-    for (const key of keys) {
-        const value = record[key];
-
-        if (typeof value === "string" && value.trim()) {
-            return value.trim();
-        }
-    }
-
-    return "";
-}
-
-// Composio wraps tool output in varying nesting (e.g. data.response_data.*),
-// so search the whole response tree for the first matching string field.
-function findString(value: unknown, keys: string[]): string {
-    if (!value || typeof value !== "object") {
-        return "";
-    }
-
-    if (Array.isArray(value)) {
-        for (const entry of value) {
-            const found = findString(entry, keys);
-
-            if (found) {
-                return found;
-            }
-        }
-
-        return "";
-    }
-
-    const record = value as Record<string, unknown>;
-    const direct = readString(record, keys);
-
-    if (direct) {
-        return direct;
-    }
-
-    for (const nested of Object.values(record)) {
-        const found = findString(nested, keys);
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return "";
 }
 
 function stripHtml(html: string) {

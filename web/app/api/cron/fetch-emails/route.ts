@@ -39,8 +39,7 @@ async function handleCronRequest(request: Request) {
         const jobs = await collectSyncJobs();
         const runs: CronRun[] = [];
 
-        // One job per active Gmail account. Phase 3 moves this loop to the
-        // EC2 BullMQ worker; for now each account is processed in sequence.
+        // One job per active Gmail account, processed in sequence for now.
         for (const job of jobs) {
             const summary = await runAgent(job.userId, job.integrationId);
             runs.push({ ...job, ...summary });

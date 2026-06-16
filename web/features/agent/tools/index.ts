@@ -1,5 +1,8 @@
+import { createApplyLabelTool } from "./apply-label";
+import { createArchiveEmailTool } from "./archive-email";
 import { createEscalateUrgentTool } from "./escalate-urgent";
 import { createIgnoreTool } from "./ignore";
+import { createSnoozeEmailTool } from "./snooze-email";
 import { createSummarizeNotifyTool } from "./summarize-notify";
 import type { RecordedDecision, TriageToolContext } from "./types";
 
@@ -27,5 +30,8 @@ export function buildTriageTools(ctx: TriageToolContext) {
     ignore: createIgnoreTool(ctx),
     summarizeAndNotify: createSummarizeNotifyTool(ctx),
     escalateUrgent: createEscalateUrgentTool(ctx),
+    archiveEmail: createArchiveEmailTool(ctx),
+    applyLabel: createApplyLabelTool(ctx),
+    snoozeEmail: createSnoozeEmailTool(ctx),
   };
 }

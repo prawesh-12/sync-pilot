@@ -1,42 +1,18 @@
-import { generateText, stepCountIs, type LanguageModel } from "ai";
-import { fetchEmailsInTimeWindow, type GmailEmail } from "@/features/gmail/gmail";
-import { getGroqModel } from "@/features/ai/groq";
-import {
-    buildTriagePrompt,
-    buildTriageUserMessage,
-} from "@/features/agent/triage-prompt";
-import {
-    buildTriageTools,
-    createDecisionRecorder,
-    type RecordedDecision,
-} from "@/features/agent/tools";
-import { summariseAndNotify } from "@/features/agent/tools/notify";
+import { collectEmails } from "@/features/agent/collect-emails";
+import { processEmails } from "@/features/agent/triage";
 import {
     getGmailAccountById,
     saveAgentDecisions,
     saveAgentRun,
     updateGmailAccountLastRun,
 } from "@/db/queries";
-import type { DecisionValue } from "@/db/schema";
+import type {
+    AgentRunSummary,
+    EmailDecision,
+    ResolvedAccount,
+} from "@/features/agent/types";
 
-const EMAIL_PROCESS_DELAY_MS = 500;
-// One-shot triage: force a single tool call, no follow-up model turn.
-const TRIAGE_MAX_STEPS = 1;
-const DEFAULT_USER_LABEL = "the user";
-
-export type AgentRunSummary = {
-    emailsFound: number;
-    summariesSent: number;
-    status: "success" | "error";
-};
-
-type EmailDecision = {
-    gmailMessageId: string;
-    decision: DecisionValue;
-    reasoning: string;
-    toolCalls: unknown;
-    notified: boolean;
-};
+export type { AgentRunSummary } from "@/features/agent/types";
 
 export async function runAgent(
     userId: string,
@@ -63,14 +39,10 @@ async function executeAgentRun(
     );
 
     const account = await resolveGmailAccount(userId, integrationId);
-    const emails = await fetchEmailsInTimeWindow(account, windowEnd);
-    console.log(`[GMAIL] Found ${emails.length} emails in current sync window`);
+    const emails = await collectEmails(account, windowEnd);
+    console.log(`[GMAIL] Processing ${emails.length} emails this run`);
 
-    const { summary, decisions } = await processEmails(
-        userId,
-        account.emailAddress,
-        emails,
-    );
+    const { summary, decisions } = await processEmails(account, emails);
     const run = await saveRunResult(userId, summary);
 
     if (run) {
@@ -99,7 +71,10 @@ async function handleRunFailure(
     return result;
 }
 
-async function resolveGmailAccount(userId: string, integrationId: string) {
+async function resolveGmailAccount(
+    userId: string,
+    integrationId: string,
+): Promise<ResolvedAccount> {
     const account = await getGmailAccountById(integrationId);
 
     if (!account || account.userId !== userId) {
@@ -119,113 +94,6 @@ async function resolveGmailAccount(userId: string, integrationId: string) {
         connectedAccountId: account.connectedAccountId,
         emailAddress: account.emailAddress,
         lastRunTimestamp: account.lastRunTimestamp,
-    };
-}
-
-async function processEmails(
-    userId: string,
-    emailAddress: string | null,
-    emails: GmailEmail[],
-): Promise<{ summary: AgentRunSummary; decisions: EmailDecision[] }> {
-    const systemPrompt = buildTriagePrompt(emailAddress || DEFAULT_USER_LABEL);
-    const model = getGroqModel();
-    const decisions: EmailDecision[] = [];
-
-    for (const [index, email] of emails.entries()) {
-        const decision = await triageEmail(model, systemPrompt, userId, email);
-        decisions.push(decision);
-
-        if (index < emails.length - 1) {
-            await delay(EMAIL_PROCESS_DELAY_MS);
-        }
-    }
-
-    return { summary: buildRunSummary(emails.length, decisions), decisions };
-}
-
-function buildRunSummary(
-    emailsFound: number,
-    decisions: EmailDecision[],
-): AgentRunSummary {
-    return {
-        emailsFound,
-        summariesSent: decisions.filter((entry) => entry.notified).length,
-        status: "success",
-    };
-}
-
-async function triageEmail(
-    model: LanguageModel,
-    systemPrompt: string,
-    userId: string,
-    email: GmailEmail,
-): Promise<EmailDecision> {
-    const recorder = createDecisionRecorder();
-    await runTriageModel(model, systemPrompt, userId, email, recorder.record);
-
-    const recorded = recorder.get();
-
-    if (recorded) {
-        return buildDecision(email, recorded);
-    }
-
-    // Model picked no tool (error or empty turn) — never drop the email.
-    return fallbackToSummary(userId, email);
-}
-
-async function runTriageModel(
-    model: LanguageModel,
-    systemPrompt: string,
-    userId: string,
-    email: GmailEmail,
-    record: (decision: RecordedDecision) => void,
-) {
-    const tools = buildTriageTools({ email, userId, record });
-
-    try {
-        console.log(`[AGENT] Triaging: ${email.subject}`);
-
-        await generateText({
-            model,
-            system: systemPrompt,
-            prompt: buildTriageUserMessage(email),
-            tools,
-            toolChoice: "required",
-            stopWhen: stepCountIs(TRIAGE_MAX_STEPS),
-        });
-    } catch (error) {
-        console.error(
-            `[AGENT] Triage failed for userId: ${userId}, email: ${email.subject}`,
-        );
-        console.error(error);
-    }
-}
-
-function buildDecision(
-    email: GmailEmail,
-    recorded: RecordedDecision,
-): EmailDecision {
-    return {
-        gmailMessageId: email.messageId,
-        decision: recorded.decision,
-        reasoning: recorded.reasoning,
-        toolCalls: recorded.toolCall,
-        notified: recorded.notified,
-    };
-}
-
-async function fallbackToSummary(
-    userId: string,
-    email: GmailEmail,
-): Promise<EmailDecision> {
-    const notified = await summariseAndNotify(email, userId);
-
-    return {
-        gmailMessageId: email.messageId,
-        decision: "summarize_notify",
-        reasoning: "Triage produced no decision; defaulted to summary.",
-        toolCalls: { name: "summarizeAndNotify", args: {}, fallback: true },
-        notified,
     };
 }
 
@@ -302,8 +170,4 @@ function buildErrorResult(): AgentRunSummary {
 
 function getErrorMessage(error: unknown) {
     return error instanceof Error ? error.message : "Unknown agent run error.";
-}
-
-function delay(durationMs: number) {
-    return new Promise((resolve) => setTimeout(resolve, durationMs));
 }

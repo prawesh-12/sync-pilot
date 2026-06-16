@@ -2,15 +2,19 @@ import type { GmailEmail } from "@/features/gmail/gmail";
 
 const TRIAGE_BODY_MAX_CHARACTERS = 4000;
 
-// System prompt for the inbox triage agent; extended with new tools each phase.
-export function buildTriagePrompt(userName: string) {
+// System prompt for the inbox triage agent; extended with new tools over time.
+export function buildTriagePrompt(userName: string, nowIso: string) {
   return [
     `You are SyncPilot's inbox triage agent for ${userName}.`,
+    `Current time (ISO 8601): ${nowIso}.`,
     "For the email below, call exactly one tool:",
     "",
     "- ignore: newsletters, automated no-reply senders, already-resolved threads",
     "- summarizeAndNotify: anything informational (default when unsure)",
     "- escalateUrgent: deadline language, VIP senders, anything time-sensitive",
+    "- archiveEmail: low-priority mail you have read the gist of and needs no reply",
+    "- applyLabel: categorize the email under a short label name",
+    "- snoozeEmail: defer the email to a future ISO 8601 timestamp computed from the current time",
     "",
     "Always include a one-sentence reason.",
     "When unsure between ignore and summarizeAndNotify — pick summarizeAndNotify.",
