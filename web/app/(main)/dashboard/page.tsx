@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { DashboardSettingsModal } from "@/components/dashboard/dashboard-settings-modal";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { DashboardIntegrationStatus } from "@/components/dashboard/dashboard-integration-status";
+import { BillingCard } from "@/components/dashboard/billing-card";
 import { DashboardRecentRuns } from "@/components/dashboard/dashboard-recent-runs";
 import {
   IntegrationStatusSkeleton,
@@ -86,6 +87,8 @@ export default async function DashboardPage({
           <Suspense fallback={<IntegrationStatusSkeleton />}>
             <DashboardIntegrationStatus userId={userId} />
           </Suspense>
+
+          <BillingCard userId={userId} />
 
           <Suspense fallback={<RecentRunsSkeleton />}>
             <DashboardRecentRuns userId={userId} />

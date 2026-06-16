@@ -1,5 +1,6 @@
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { users } from "@/db/schema";
+import { users, type PlanValue } from "@/db/schema";
 
 type AppUser = {
   id: string;
@@ -23,4 +24,15 @@ export async function upsertUser(user: AppUser) {
     .returning();
 
   return savedUser;
+}
+
+export async function setUserPlan(userId: string, plan: PlanValue) {
+  const db = getDb();
+  const [updatedUser] = await db
+    .update(users)
+    .set({ plan })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id, plan: users.plan });
+
+  return updatedUser ?? null;
 }

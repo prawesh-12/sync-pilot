@@ -21,6 +21,10 @@ const envSchema = z.object({
     SIGNAL_SENDER_NUMBER: z.string().trim().optional().default(""),
     SIGNAL_RECIPIENT_NUMBER: z.string().trim().optional().default(""),
     CRON_SECRET: z.string().trim().optional().default(""),
+    RAZORPAY_KEY_ID: z.string().trim().optional().default(""),
+    RAZORPAY_KEY_SECRET: z.string().trim().optional().default(""),
+    RAZORPAY_PLAN_ID: z.string().trim().optional().default(""),
+    RAZORPAY_WEBHOOK_SECRET: z.string().trim().optional().default(""),
 });
 
 export function getEnv() {
@@ -100,4 +104,42 @@ export function getCronSecret() {
     }
 
     return env.CRON_SECRET;
+}
+
+export function getRazorpayConfig() {
+    const env = getEnv();
+
+    if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+        throw new Error("Razorpay API keys are not configured.");
+    }
+
+    if (!env.RAZORPAY_PLAN_ID) {
+        throw new Error("RAZORPAY_PLAN_ID is not configured.");
+    }
+
+    return {
+        keyId: env.RAZORPAY_KEY_ID,
+        keySecret: env.RAZORPAY_KEY_SECRET,
+        planId: env.RAZORPAY_PLAN_ID,
+    };
+}
+
+export function getRazorpayWebhookSecret() {
+    const env = getEnv();
+
+    if (!env.RAZORPAY_WEBHOOK_SECRET) {
+        throw new Error("RAZORPAY_WEBHOOK_SECRET is not configured.");
+    }
+
+    return env.RAZORPAY_WEBHOOK_SECRET;
+}
+
+export function isRazorpayConfigured() {
+    const env = getEnv();
+
+    return Boolean(
+        env.RAZORPAY_KEY_ID &&
+            env.RAZORPAY_KEY_SECRET &&
+            env.RAZORPAY_PLAN_ID,
+    );
 }

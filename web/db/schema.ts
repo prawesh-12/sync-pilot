@@ -39,6 +39,12 @@ export const PENDING_ACTION_STATUS_VALUES = [
     "discarded",
     "expired",
 ] as const;
+export const SUBSCRIPTION_STATUS_VALUES = [
+    "created",
+    "active",
+    "cancelled",
+    "expired",
+] as const;
 
 export type PlanValue = (typeof PLAN_VALUES)[number];
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
@@ -50,6 +56,8 @@ export type PendingActionTypeValue =
     (typeof PENDING_ACTION_TYPE_VALUES)[number];
 export type PendingActionStatusValue =
     (typeof PENDING_ACTION_STATUS_VALUES)[number];
+export type SubscriptionStatusValue =
+    (typeof SUBSCRIPTION_STATUS_VALUES)[number];
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(),
@@ -158,6 +166,35 @@ export const agentDecisions = pgTable("agent_decisions", {
         .notNull()
         .defaultNow(),
 });
+
+// One billing subscription per user; mirrors the user's plan for history/webhooks.
+export const subscriptions = pgTable(
+    "subscriptions",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        plan: text("plan").$type<PlanValue>().notNull().default("free"),
+        razorpaySubscriptionId: text("razorpay_subscription_id"),
+        status: text("status")
+            .$type<SubscriptionStatusValue>()
+            .notNull()
+            .default("created"),
+        currentPeriodEnd: timestamp("current_period_end", {
+            withTimezone: true,
+        }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [
+        unique("subscriptions_user_unique").on(table.userId),
+        unique("subscriptions_razorpay_id_unique").on(
+            table.razorpaySubscriptionId,
+        ),
+    ],
+);
 
 // A draft or action awaiting the user's Signal confirmation, keyed by refCode.
 export const pendingActions = pgTable("pending_actions", {
