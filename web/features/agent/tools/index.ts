@@ -1,5 +1,6 @@
 import { createApplyLabelTool } from "./apply-label";
 import { createArchiveEmailTool } from "./archive-email";
+import { createDraftReplyTool } from "./draft-reply";
 import { createEscalateUrgentTool } from "./escalate-urgent";
 import { createIgnoreTool } from "./ignore";
 import { createSnoozeEmailTool } from "./snooze-email";
@@ -33,5 +34,6 @@ export function buildTriageTools(ctx: TriageToolContext) {
     archiveEmail: createArchiveEmailTool(ctx),
     applyLabel: createApplyLabelTool(ctx),
     snoozeEmail: createSnoozeEmailTool(ctx),
+    draftReply: createDraftReplyTool(ctx),
   };
 }

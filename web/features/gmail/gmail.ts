@@ -11,6 +11,7 @@ const HTML_TAG_PATTERN = /<[a-z!/][\s\S]*>/i;
 
 export type GmailEmail = {
     messageId: string;
+    threadId: string;
     subject: string;
     from: string;
     body: string;
@@ -136,6 +137,7 @@ function mapMessage(message: Record<string, unknown>): GmailEmail | null {
 
     return {
         messageId,
+        threadId: readString(message, ["threadId", "thread_id"]),
         subject: readString(message, ["subject"]) || "(No subject)",
         from: readString(message, ["sender", "from"]) || "Unknown sender",
         body: getMessageBody(message),
@@ -149,6 +151,7 @@ function mapFetchedMessage(
 ): GmailEmail {
     return {
         messageId,
+        threadId: findString(data, ["threadId", "thread_id"]),
         subject: findString(data, ["subject"]) || "(No subject)",
         from: findString(data, ["sender", "from"]) || "Unknown sender",
         body: cleanBody(findString(data, BODY_KEYS)),

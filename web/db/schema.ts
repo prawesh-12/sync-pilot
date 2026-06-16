@@ -29,6 +29,16 @@ export const DECISION_VALUES = [
     "snooze",
     "draft_reply",
 ] as const;
+export const PENDING_ACTION_TYPE_VALUES = [
+    "draft_reply",
+    "confirm_archive",
+] as const;
+export const PENDING_ACTION_STATUS_VALUES = [
+    "pending",
+    "confirmed",
+    "discarded",
+    "expired",
+] as const;
 
 export type PlanValue = (typeof PLAN_VALUES)[number];
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
@@ -36,6 +46,10 @@ export type RunStatusValue = (typeof RUN_STATUS_VALUES)[number];
 export type DecisionValue = (typeof DECISION_VALUES)[number];
 export type ProcessedEmailStatusValue =
     (typeof PROCESSED_EMAIL_STATUS_VALUES)[number];
+export type PendingActionTypeValue =
+    (typeof PENDING_ACTION_TYPE_VALUES)[number];
+export type PendingActionStatusValue =
+    (typeof PENDING_ACTION_STATUS_VALUES)[number];
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(),
@@ -143,4 +157,26 @@ export const agentDecisions = pgTable("agent_decisions", {
     createdAt: timestamp("created_at", { withTimezone: true })
         .notNull()
         .defaultNow(),
+});
+
+// A draft or action awaiting the user's Signal confirmation, keyed by refCode.
+export const pendingActions = pgTable("pending_actions", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    gmailMessageId: text("gmail_message_id").notNull(),
+    actionType: text("action_type")
+        .$type<PendingActionTypeValue>()
+        .notNull(),
+    payload: jsonb("payload"),
+    refCode: text("ref_code").notNull(),
+    status: text("status")
+        .$type<PendingActionStatusValue>()
+        .notNull()
+        .default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
 });

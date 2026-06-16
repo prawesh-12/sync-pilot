@@ -3,7 +3,8 @@ import { getSignalIntegration } from "@/db/queries";
 import { getSignalConfig, isSignalConfigured } from "@/config/env";
 
 const SIGNAL_MESSAGE_TITLE = "New Email Summary";
-const SIGNAL_URGENT_MESSAGE_TITLE = "🚨 URGENT";
+const SIGNAL_URGENT_MESSAGE_TITLE = "URGENT";
+const SIGNAL_DRAFT_MESSAGE_TITLE = "Draft ready";
 const SIGNAL_SEND_PATH = "v2/send";
 const SIGNAL_QR_CODE_LINK_PATH = "v1/qrcodelink";
 const SIGNAL_REQUEST_TIMEOUT_MS = 10_000;
@@ -38,6 +39,17 @@ type SignalMessageOptions = {
     urgent?: boolean;
 };
 
+type SignalNumbers = {
+    sender: string;
+    recipient: string;
+};
+
+type DraftReadyInput = {
+    subject: string;
+    preview: string;
+    refCode: string;
+};
+
 function buildSignalMessage(
     summary: string,
     subject: string,
@@ -60,80 +72,110 @@ function buildSignalMessage(
     ].join("\n");
 }
 
+function buildDraftReadyMessage(input: DraftReadyInput) {
+    return [
+        `${SIGNAL_DRAFT_MESSAGE_TITLE} for: ${input.subject || "(No subject)"}`,
+        `Preview: ${input.preview}`,
+        "",
+        `Reply "${input.refCode} send" to send`,
+        `Reply "${input.refCode} no" to discard`,
+        `Reply "${input.refCode} [edit instructions]" to revise`,
+    ].join("\n");
+}
+
 export async function sendSignalMessage(
     summary: string,
     subject: string,
     userId: string,
     options?: SignalMessageOptions,
 ): Promise<SignalSendResult> {
-    if (!isSignalConfigured()) {
-        const error = "Signal is not configured.";
-        console.error(`[SIGNAL] ${error}`);
+    return dispatchSignalMessage(
+        buildSignalMessage(summary, subject, options),
+        userId,
+    );
+}
 
-        return {
-            ok: false,
-            error,
-        };
+export async function sendDraftReadyMessage(
+    input: DraftReadyInput,
+    userId: string,
+): Promise<SignalSendResult> {
+    return dispatchSignalMessage(buildDraftReadyMessage(input), userId);
+}
+
+async function dispatchSignalMessage(
+    message: string,
+    userId: string,
+): Promise<SignalSendResult> {
+    if (!isSignalConfigured()) {
+        return failResult("Signal is not configured.");
     }
 
     try {
-        const signalIntegration = await getSignalIntegration(userId);
+        const numbers = await resolveSignalNumbers(userId);
 
-        if (!signalIntegration) {
-            const error = "Signal is not connected for this user.";
-            console.error(`[SIGNAL] ${error}`);
-
-            return {
-                ok: false,
-                error,
-            };
+        if (!numbers) {
+            return failResult("Signal is not connected for this user.");
         }
 
-        const senderNumber = normalizePhoneNumber(
-            signalIntegration.senderNumber,
-        );
-        const recipientNumber = normalizePhoneNumber(
-            signalIntegration.recipientNumber,
-        );
-
-        if (!senderNumber || !recipientNumber) {
-            const error = "Signal numbers are incomplete for this user.";
-            console.error(`[SIGNAL] ${error}`);
-
-            return {
-                ok: false,
-                error,
-            };
-        }
-
-        const config = getSignalConfig();
-        const endpoint = getSignalSendEndpoint(config.restUrl);
-        const response = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                number: senderNumber,
-                recipients: [recipientNumber],
-                message: buildSignalMessage(summary, subject, options),
-            }),
-            cache: "no-store",
-            signal: AbortSignal.timeout(SIGNAL_REQUEST_TIMEOUT_MS),
-        });
-        const data = await readSignalResponse(response);
-
-        return buildSignalResult(response.status, response.ok, data);
+        return await postSignalMessage(numbers, message);
     } catch (error) {
-        const message =
+        const reason =
             error instanceof Error ? error.message : "Signal send failed.";
-        console.error(`[SIGNAL] ${message}`);
 
-        return {
-            ok: false,
-            error: message,
-        };
+        return failResult(reason);
     }
+}
+
+async function resolveSignalNumbers(
+    userId: string,
+): Promise<SignalNumbers | null> {
+    const integration = await getSignalIntegration(userId);
+
+    if (!integration) {
+        return null;
+    }
+
+    const sender = normalizePhoneNumber(integration.senderNumber);
+    const recipient = normalizePhoneNumber(integration.recipientNumber);
+
+    if (!sender || !recipient) {
+        return null;
+    }
+
+    return { sender, recipient };
+}
+
+async function postSignalMessage(
+    numbers: SignalNumbers,
+    message: string,
+): Promise<SignalSendResult> {
+    const config = getSignalConfig();
+    const endpoint = getSignalSendEndpoint(config.restUrl);
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            number: numbers.sender,
+            recipients: [numbers.recipient],
+            message,
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(SIGNAL_REQUEST_TIMEOUT_MS),
+    });
+    const data = await readSignalResponse(response);
+
+    return buildSignalResult(response.status, response.ok, data);
+}
+
+function failResult(error: string): SignalSendResult {
+    console.error(`[SIGNAL] ${error}`);
+
+    return {
+        ok: false,
+        error,
+    };
 }
 
 export function buildSignalDeviceName(userId: string) {

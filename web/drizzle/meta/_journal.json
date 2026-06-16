@@ -50,6 +50,13 @@
       "when": 1781612374494,
       "tag": "0006_tiny_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781613456053,
+      "tag": "0007_funny_excalibur",
+      "breakpoints": true
     }
   ]
 }

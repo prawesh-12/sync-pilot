@@ -7,7 +7,8 @@ export type DecisionName =
   | "escalate"
   | "archive"
   | "apply_label"
-  | "snooze";
+  | "snooze"
+  | "draft_reply";
 
 export type RecordedDecision = {
   decision: DecisionName;

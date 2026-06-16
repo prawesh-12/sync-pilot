@@ -1,0 +1,50 @@
+import { executeGmailTool } from "@/lib/composio";
+import { findString } from "@/features/gmail/parse";
+import type { GmailActionAccount } from "@/features/gmail/gmail";
+
+const GMAIL_CREATE_DRAFT_TOOL = "GMAIL_CREATE_EMAIL_DRAFT";
+const EMAIL_ADDRESS_PATTERN = /<([^>]+)>/;
+
+type DraftReplyInput = {
+  threadId: string;
+  replyTo: string;
+  body: string;
+};
+
+// Saves a threaded reply draft; subject is omitted so Gmail keeps the thread.
+export async function createDraftReply(
+  account: GmailActionAccount,
+  input: DraftReplyInput,
+): Promise<string> {
+  const result = await executeGmailTool(
+    account.userId,
+    GMAIL_CREATE_DRAFT_TOOL,
+    {
+      recipient_email: extractEmailAddress(input.replyTo),
+      body: input.body,
+      is_html: false,
+      ...(input.threadId ? { thread_id: input.threadId } : {}),
+    },
+    account.connectedAccountId,
+  );
+  const draftId =
+    findString(result.data, ["draftId", "draft_id"]) ||
+    findString(result.data, ["id"]);
+
+  if (!draftId) {
+    throw new Error("Gmail did not return a draft id.");
+  }
+
+  return draftId;
+}
+
+// Sender headers look like "Name <addr@x.com>"; pull out the address.
+function extractEmailAddress(sender: string): string {
+  const match = sender.match(EMAIL_ADDRESS_PATTERN);
+
+  if (match) {
+    return match[1].trim();
+  }
+
+  return sender.trim();
+}

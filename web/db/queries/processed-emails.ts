@@ -5,12 +5,26 @@ import {
   type ProcessedEmailStatusValue,
 } from "@/db/schema";
 
+type ProcessedEmailState = {
+  status: ProcessedEmailStatusValue;
+  snoozedUntil: Date | null;
+  gmailDraftId: string | null;
+};
+
 export async function markEmailArchived(userId: string, messageId: string) {
-  return setProcessedEmailStatus(userId, messageId, "archived", null);
+  return setProcessedEmail(userId, messageId, {
+    status: "archived",
+    snoozedUntil: null,
+    gmailDraftId: null,
+  });
 }
 
 export async function markEmailActive(userId: string, messageId: string) {
-  return setProcessedEmailStatus(userId, messageId, "active", null);
+  return setProcessedEmail(userId, messageId, {
+    status: "active",
+    snoozedUntil: null,
+    gmailDraftId: null,
+  });
 }
 
 export async function markEmailSnoozed(
@@ -18,7 +32,23 @@ export async function markEmailSnoozed(
   messageId: string,
   snoozedUntil: Date,
 ) {
-  return setProcessedEmailStatus(userId, messageId, "snoozed", snoozedUntil);
+  return setProcessedEmail(userId, messageId, {
+    status: "snoozed",
+    snoozedUntil,
+    gmailDraftId: null,
+  });
+}
+
+export async function markEmailDrafted(
+  userId: string,
+  messageId: string,
+  gmailDraftId: string,
+) {
+  return setProcessedEmail(userId, messageId, {
+    status: "drafted",
+    snoozedUntil: null,
+    gmailDraftId,
+  });
 }
 
 export async function getDueSnoozedEmails(userId: string, now: Date) {
@@ -36,19 +66,18 @@ export async function getDueSnoozedEmails(userId: string, now: Date) {
     );
 }
 
-async function setProcessedEmailStatus(
+async function setProcessedEmail(
   userId: string,
   messageId: string,
-  status: ProcessedEmailStatusValue,
-  snoozedUntil: Date | null,
+  state: ProcessedEmailState,
 ) {
   const db = getDb();
   const [row] = await db
     .insert(processedEmails)
-    .values({ messageId, userId, status, snoozedUntil })
+    .values({ messageId, userId, ...state })
     .onConflictDoUpdate({
       target: processedEmails.messageId,
-      set: { status, snoozedUntil },
+      set: { ...state },
     })
     .returning({ messageId: processedEmails.messageId });
 

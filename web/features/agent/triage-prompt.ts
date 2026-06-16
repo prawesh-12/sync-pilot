@@ -15,7 +15,9 @@ export function buildTriagePrompt(userName: string, nowIso: string) {
     "- archiveEmail: low-priority mail you have read the gist of and needs no reply",
     "- applyLabel: categorize the email under a short label name",
     "- snoozeEmail: defer the email to a future ISO 8601 timestamp computed from the current time",
+    "- draftReply: write a reply and save it to Gmail Drafts for the user to confirm; it is never sent automatically",
     "",
+    "For draftReply, write the full reply text yourself in the body argument.",
     "Always include a one-sentence reason.",
     "When unsure between ignore and summarizeAndNotify — pick summarizeAndNotify.",
   ].join("\n");
