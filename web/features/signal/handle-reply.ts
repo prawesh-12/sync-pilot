@@ -71,6 +71,10 @@ async function dispatchReply(
     case "freeform":
       await sendSignalNotice(userId, FREEFORM_NOTICE);
       return;
+    default: {
+      const exhaustive: never = parsed;
+      throw new Error(`Unhandled reply kind: ${JSON.stringify(exhaustive)}`);
+    }
   }
 }
 

@@ -21,6 +21,7 @@ const envSchema = z.object({
     SIGNAL_SENDER_NUMBER: z.string().trim().optional().default(""),
     SIGNAL_RECIPIENT_NUMBER: z.string().trim().optional().default(""),
     CRON_SECRET: z.string().trim().optional().default(""),
+    SYNC_SECRET: z.string().trim().optional().default(""),
     RAZORPAY_KEY_ID: z.string().trim().optional().default(""),
     RAZORPAY_KEY_SECRET: z.string().trim().optional().default(""),
     RAZORPAY_PLAN_ID: z.string().trim().optional().default(""),
@@ -104,6 +105,16 @@ export function getCronSecret() {
     }
 
     return env.CRON_SECRET;
+}
+
+export function getSyncSecret() {
+    const env = getEnv();
+
+    if (!env.SYNC_SECRET) {
+        throw new Error("SYNC_SECRET is not configured.");
+    }
+
+    return env.SYNC_SECRET;
 }
 
 export function getRazorpayConfig() {

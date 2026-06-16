@@ -31,4 +31,7 @@ export const serverConfig = {
   redisPort: readPort("REDIS_PORT", DEFAULT_REDIS_PORT),
   serverPort: readPort("PORT", DEFAULT_SERVER_PORT),
   syncSecret: requireEnv("SYNC_SECRET"),
+  // Only the worker needs this; validated in agent.ts so the intake server can
+  // run without it.
+  webAppUrl: process.env.WEB_APP_URL ?? "",
 };
