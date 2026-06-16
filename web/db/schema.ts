@@ -146,8 +146,30 @@ export const agentRuns = pgTable("agent_runs", {
     emailsFound: integer("emails_found").notNull(),
     summariesSent: integer("summaries_sent").notNull(),
     status: text("status").$type<RunStatusValue>().notNull(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
     ranAt: timestamp("ran_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Per-user, per-month token + email totals; one row per (userId, month).
+export const userUsage = pgTable(
+    "user_usage",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        // Calendar month bucket in UTC, formatted as "YYYY-MM".
+        month: text("month").notNull(),
+        totalTokensUsed: integer("total_tokens_used").notNull().default(0),
+        emailCount: integer("email_count").notNull().default(0),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => [unique("user_usage_user_month_unique").on(table.userId, table.month)],
+);
 
 // One row per email per run so every agent action stays auditable.
 export const agentDecisions = pgTable("agent_decisions", {

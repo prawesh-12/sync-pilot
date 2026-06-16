@@ -11,6 +11,11 @@ import {
   type RecordedDecision,
 } from "@/features/agent/tools";
 import { summariseAndNotify } from "@/features/agent/tools/notify";
+import {
+  createUsageCollector,
+  type TokenUsage,
+  type UsageCollector,
+} from "@/features/agent/usage";
 import type { AgentRunSummary, EmailDecision, ResolvedAccount } from "./types";
 
 const EMAIL_PROCESS_DELAY_MS = 500;
@@ -21,16 +26,27 @@ const DEFAULT_USER_LABEL = "the user";
 export async function processEmails(
   account: ResolvedAccount,
   emails: GmailEmail[],
-): Promise<{ summary: AgentRunSummary; decisions: EmailDecision[] }> {
+): Promise<{
+  summary: AgentRunSummary;
+  decisions: EmailDecision[];
+  usage: TokenUsage;
+}> {
   const systemPrompt = buildTriagePrompt(
     account.emailAddress || DEFAULT_USER_LABEL,
     new Date().toISOString(),
   );
   const model = getGroqModel();
   const decisions: EmailDecision[] = [];
+  const collector = createUsageCollector();
 
   for (const [index, email] of emails.entries()) {
-    const decision = await triageEmail(model, systemPrompt, account, email);
+    const decision = await triageEmail(
+      model,
+      systemPrompt,
+      account,
+      email,
+      collector,
+    );
     decisions.push(decision);
 
     if (index < emails.length - 1) {
@@ -38,17 +54,25 @@ export async function processEmails(
     }
   }
 
-  return { summary: buildRunSummary(emails.length, decisions), decisions };
+  const usage = collector.snapshot();
+
+  return {
+    summary: buildRunSummary(emails.length, decisions, usage),
+    decisions,
+    usage,
+  };
 }
 
 function buildRunSummary(
   emailsFound: number,
   decisions: EmailDecision[],
+  usage: TokenUsage,
 ): AgentRunSummary {
   return {
     emailsFound,
     summariesSent: decisions.filter((entry) => entry.notified).length,
     status: "success",
+    totalTokens: usage.totalTokens,
   };
 }
 
@@ -57,9 +81,17 @@ async function triageEmail(
   systemPrompt: string,
   account: ResolvedAccount,
   email: GmailEmail,
+  collector: UsageCollector,
 ): Promise<EmailDecision> {
   const recorder = createDecisionRecorder();
-  await runTriageModel(model, systemPrompt, account, email, recorder.record);
+  await runTriageModel(
+    model,
+    systemPrompt,
+    account,
+    email,
+    recorder.record,
+    collector,
+  );
 
   const recorded = recorder.get();
 
@@ -68,7 +100,7 @@ async function triageEmail(
   }
 
   // Model picked no tool (error or empty turn) — never drop the email.
-  return fallbackToSummary(account.userId, email);
+  return fallbackToSummary(account.userId, email, collector);
 }
 
 async function runTriageModel(
@@ -77,18 +109,20 @@ async function runTriageModel(
   account: ResolvedAccount,
   email: GmailEmail,
   record: (decision: RecordedDecision) => void,
+  collector: UsageCollector,
 ) {
   const tools = buildTriageTools({
     email,
     userId: account.userId,
     connectedAccountId: account.connectedAccountId,
     record,
+    recordUsage: (usage) => collector.add(usage),
   });
 
   try {
     console.log(`[AGENT] Triaging: ${email.subject}`);
 
-    await generateText({
+    const result = await generateText({
       model,
       system: systemPrompt,
       prompt: buildTriageUserMessage(email),
@@ -96,6 +130,7 @@ async function runTriageModel(
       toolChoice: "required",
       stopWhen: stepCountIs(TRIAGE_MAX_STEPS),
     });
+    collector.add(result.usage);
   } catch (error) {
     console.error(
       `[AGENT] Triage failed for userId: ${account.userId}, email: ${email.subject}`,
@@ -120,8 +155,10 @@ function buildDecision(
 async function fallbackToSummary(
   userId: string,
   email: GmailEmail,
+  collector: UsageCollector,
 ): Promise<EmailDecision> {
-  const notified = await summariseAndNotify(email, userId);
+  const { notified, usage } = await summariseAndNotify(email, userId);
+  collector.add(usage);
 
   return {
     gmailMessageId: email.messageId,

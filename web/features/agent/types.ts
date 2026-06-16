@@ -4,6 +4,7 @@ export type AgentRunSummary = {
   emailsFound: number;
   summariesSent: number;
   status: "success" | "error";
+  totalTokens: number;
 };
 
 // Gmail account context resolved once per run and threaded through the agent.

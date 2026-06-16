@@ -1,5 +1,5 @@
 import { createGroq } from "@ai-sdk/groq";
-import { generateText } from "ai";
+import { generateText, type LanguageModelUsage } from "ai";
 import { z } from "zod";
 import { getGroqConfig, isGroqConfigured } from "@/config/env";
 
@@ -32,7 +32,14 @@ function buildSummaryPrompt(emailContent: EmailContent) {
   ].join("\n");
 }
 
-export async function summariseEmail(emailContent: EmailContent): Promise<string> {
+type SummaryResult = {
+  text: string;
+  usage: LanguageModelUsage | undefined;
+};
+
+export async function summariseEmail(
+  emailContent: EmailContent,
+): Promise<SummaryResult> {
   if (!isGroqConfigured()) {
     throw new Error("GROQ_API_KEY is not configured.");
   }
@@ -49,7 +56,7 @@ export async function summariseEmail(emailContent: EmailContent): Promise<string
     maxOutputTokens: SUMMARY_MAX_TOKENS,
   });
 
-  return result.text;
+  return { text: result.text, usage: result.usage };
 }
 
 function getSummaryBody(body: string) {

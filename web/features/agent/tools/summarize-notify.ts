@@ -15,7 +15,8 @@ export function createSummarizeNotifyTool(ctx: TriageToolContext) {
         .describe("One sentence explaining why this email warrants a summary."),
     }),
     execute: async ({ reason }) => {
-      const notified = await summariseAndNotify(ctx.email, ctx.userId);
+      const { notified, usage } = await summariseAndNotify(ctx.email, ctx.userId);
+      ctx.recordUsage(usage);
 
       ctx.record({
         decision: "summarize_notify",

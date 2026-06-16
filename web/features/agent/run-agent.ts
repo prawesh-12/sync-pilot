@@ -1,6 +1,12 @@
 import { collectEmails } from "@/features/agent/collect-emails";
 import { processEmails } from "@/features/agent/triage";
 import {
+    EMPTY_TOKEN_USAGE,
+    getUsageMonth,
+    type TokenUsage,
+} from "@/features/agent/usage";
+import {
+    addUserUsage,
     getGmailAccountById,
     saveAgentDecisions,
     saveAgentRun,
@@ -42,12 +48,14 @@ async function executeAgentRun(
     const emails = await collectEmails(account, windowEnd);
     console.log(`[GMAIL] Processing ${emails.length} emails this run`);
 
-    const { summary, decisions } = await processEmails(account, emails);
-    const run = await saveRunResult(userId, summary);
+    const { summary, decisions, usage } = await processEmails(account, emails);
+    const run = await saveRunResult(userId, summary, usage);
 
     if (run) {
         await persistDecisions(run.id, userId, decisions);
     }
+
+    await persistUserUsage(userId, windowEnd, usage, summary.emailsFound);
 
     console.log(`[CRON] Run complete - ${summary.summariesSent} summaries sent`);
 
@@ -66,7 +74,7 @@ async function handleRunFailure(
     console.error(error);
 
     const result = buildErrorResult();
-    await saveRunResult(userId, result, message);
+    await saveRunResult(userId, result, EMPTY_TOKEN_USAGE, message);
 
     return result;
 }
@@ -125,6 +133,31 @@ async function persistDecisions(
     }
 }
 
+async function persistUserUsage(
+    userId: string,
+    ranAt: Date,
+    usage: TokenUsage,
+    emailCount: number,
+) {
+    if (usage.totalTokens === 0 && emailCount === 0) {
+        return;
+    }
+
+    try {
+        await addUserUsage(
+            userId,
+            getUsageMonth(ranAt),
+            usage.totalTokens,
+            emailCount,
+        );
+    } catch (error) {
+        console.error(
+            `[CRON] Failed to persist user usage for userId: ${userId}`,
+        );
+        console.error(error);
+    }
+}
+
 async function persistLastRunTimestamp(
     integrationId: string,
     lastRunTimestamp: Date,
@@ -142,10 +175,11 @@ async function persistLastRunTimestamp(
 async function saveRunResult(
     userId: string,
     result: AgentRunSummary,
+    usage: TokenUsage,
     errorMessage?: string,
 ) {
     try {
-        return await saveAgentRun(userId, result);
+        return await saveAgentRun(userId, result, usage);
     } catch (error) {
         console.error(
             `[CRON] Failed to persist agent run for userId: ${userId}`,
@@ -165,6 +199,7 @@ function buildErrorResult(): AgentRunSummary {
         emailsFound: 0,
         summariesSent: 0,
         status: "error",
+        totalTokens: 0,
     };
 }
 

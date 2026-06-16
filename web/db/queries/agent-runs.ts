@@ -13,6 +13,18 @@ type AgentRunResult = {
   status: RunStatusValue;
 };
 
+type TokenUsageInput = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+const ZERO_TOKEN_USAGE: TokenUsageInput = {
+  promptTokens: 0,
+  completionTokens: 0,
+  totalTokens: 0,
+};
+
 export const getRecentAgentRuns = cache(async function getRecentAgentRuns(
   userId: string,
   limit = DEFAULT_RUN_LIMIT,
@@ -27,6 +39,7 @@ export const getRecentAgentRuns = cache(async function getRecentAgentRuns(
       emailsFound: agentRuns.emailsFound,
       summariesSent: agentRuns.summariesSent,
       status: agentRuns.status,
+      totalTokens: agentRuns.totalTokens,
     })
     .from(agentRuns)
     .where(eq(agentRuns.userId, userId))
@@ -34,7 +47,11 @@ export const getRecentAgentRuns = cache(async function getRecentAgentRuns(
     .limit(safeLimit);
 });
 
-export async function saveAgentRun(userId: string, result: AgentRunResult) {
+export async function saveAgentRun(
+  userId: string,
+  result: AgentRunResult,
+  usage: TokenUsageInput = ZERO_TOKEN_USAGE,
+) {
   const db = getDb();
   const [agentRun] = await db
     .insert(agentRuns)
@@ -43,6 +60,9 @@ export async function saveAgentRun(userId: string, result: AgentRunResult) {
       emailsFound: result.emailsFound,
       summariesSent: result.summariesSent,
       status: result.status,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
     })
     .returning();
 

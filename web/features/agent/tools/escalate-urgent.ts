@@ -15,9 +15,10 @@ export function createEscalateUrgentTool(ctx: TriageToolContext) {
         .describe("One sentence explaining why this email is urgent."),
     }),
     execute: async ({ reason }) => {
-      const notified = await summariseAndNotify(ctx.email, ctx.userId, {
+      const { notified, usage } = await summariseAndNotify(ctx.email, ctx.userId, {
         urgent: true,
       });
+      ctx.recordUsage(usage);
 
       ctx.record({
         decision: "escalate",

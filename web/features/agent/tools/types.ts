@@ -1,3 +1,4 @@
+import type { LanguageModelUsage } from "ai";
 import type { GmailEmail } from "@/features/gmail/gmail";
 
 // Mirrors the schema's DecisionValue union for the actions the agent can take.
@@ -26,4 +27,6 @@ export type TriageToolContext = {
   connectedAccountId: string;
   // Tool calls this once; the recorder keeps only the first to enforce one decision.
   record: (decision: RecordedDecision) => void;
+  // Tools that make their own Groq call report its usage here for accounting.
+  recordUsage: (usage: LanguageModelUsage | undefined) => void;
 };
