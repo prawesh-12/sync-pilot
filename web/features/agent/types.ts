@@ -17,6 +17,7 @@ export type ResolvedAccount = {
 
 export type EmailDecision = {
   gmailMessageId: string;
+  subject: string;
   decision: DecisionValue;
   reasoning: string;
   toolCalls: unknown;

@@ -5,10 +5,12 @@ import { DashboardSettingsModal } from "@/components/dashboard/dashboard-setting
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
 import { DashboardIntegrationStatus } from "@/components/dashboard/dashboard-integration-status";
 import { BillingCard } from "@/components/dashboard/billing-card";
+import { UsageCard } from "@/components/dashboard/usage-card";
 import { DashboardRecentRuns } from "@/components/dashboard/dashboard-recent-runs";
 import {
   IntegrationStatusSkeleton,
   RecentRunsSkeleton,
+  UsageSkeleton,
 } from "@/components/dashboard/dashboard-section-skeletons";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 
@@ -86,6 +88,10 @@ export default async function DashboardPage({
         <section className="flex flex-col gap-4 sm:flex-1 sm:min-h-0">
           <Suspense fallback={<IntegrationStatusSkeleton />}>
             <DashboardIntegrationStatus userId={userId} />
+          </Suspense>
+
+          <Suspense fallback={<UsageSkeleton />}>
+            <UsageCard userId={userId} />
           </Suspense>
 
           <BillingCard userId={userId} />

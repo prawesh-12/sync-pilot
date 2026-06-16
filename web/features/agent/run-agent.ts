@@ -120,6 +120,7 @@ async function persistDecisions(
                 runId,
                 userId,
                 gmailMessageId: entry.gmailMessageId,
+                subject: entry.subject,
                 decision: entry.decision,
                 reasoning: entry.reasoning,
                 toolCalls: entry.toolCalls,

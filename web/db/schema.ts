@@ -181,6 +181,8 @@ export const agentDecisions = pgTable("agent_decisions", {
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
     gmailMessageId: text("gmail_message_id").notNull(),
+    // Email subject captured at decision time so the audit view needs no re-fetch.
+    subject: text("subject"),
     decision: text("decision").$type<DecisionValue>().notNull(),
     reasoning: text("reasoning").notNull(),
     toolCalls: jsonb("tool_calls"),

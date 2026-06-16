@@ -145,6 +145,7 @@ function buildDecision(
 ): EmailDecision {
   return {
     gmailMessageId: email.messageId,
+    subject: email.subject,
     decision: recorded.decision,
     reasoning: recorded.reasoning,
     toolCalls: recorded.toolCall,
@@ -162,6 +163,7 @@ async function fallbackToSummary(
 
   return {
     gmailMessageId: email.messageId,
+    subject: email.subject,
     decision: "summarize_notify",
     reasoning: "Triage produced no decision; defaulted to summary.",
     toolCalls: { name: "summarizeAndNotify", args: {}, fallback: true },

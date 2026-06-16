@@ -12,6 +12,16 @@ export function IntegrationStatusSkeleton() {
   );
 }
 
+export function UsageSkeleton() {
+  return (
+    <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-4 py-4 sm:px-5">
+      <Skeleton width="80px" height="24px" className="bg-[#A089E6]/20" />
+      <Skeleton width="100%" height="14px" className="bg-[#A089E6]/15" />
+      <Skeleton width="240px" height="12px" className="bg-[#A089E6]/15" />
+    </div>
+  );
+}
+
 export function RecentRunsSkeleton() {
   return (
     <div className="flex w-full flex-col rounded-2xl border border-[#A089E6]/15 bg-white/4 p-4">

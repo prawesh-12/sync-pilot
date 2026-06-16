@@ -43,6 +43,14 @@ export function Navbar({ className }: NavbarProps) {
                                     Dashboard
                                 </PendingLink>
                             ) : null}
+                            {!pathname.startsWith("/agent") ? (
+                                <PendingLink
+                                    href="/agent"
+                                    className="px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-white"
+                                >
+                                    Agent
+                                </PendingLink>
+                            ) : null}
                             <button
                                 type="button"
                                 onClick={() => signOut({ redirectTo: "/" })}
