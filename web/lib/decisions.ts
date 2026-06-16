@@ -22,10 +22,10 @@ const DECISION_BADGE_CLASSES: Record<DecisionValue, string> = {
   draft_reply: "border-[#A089E6]/30 bg-[#A089E6]/15 text-[#C4B5F5]",
 };
 
-export function decisionLabel(decision: DecisionValue): string {
+export function getDecisionLabel(decision: DecisionValue): string {
   return DECISION_LABELS[decision];
 }
 
-export function decisionBadgeClass(decision: DecisionValue): string {
+export function getDecisionBadgeClass(decision: DecisionValue): string {
   return DECISION_BADGE_CLASSES[decision];
 }

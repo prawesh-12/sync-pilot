@@ -1,5 +1,5 @@
 import { getDecisionCountsByRun, getRecentAgentRuns } from "@/db/queries";
-import { decisionLabel } from "@/lib/decisions";
+import { getDecisionLabel } from "@/lib/decisions";
 import { formatNumber } from "@/lib/format";
 import type { DecisionValue } from "@/db/schema";
 
@@ -68,7 +68,7 @@ function RunCard({
         <p className="text-sm font-medium text-white">
           {new Date(run.ranAt).toLocaleString()}
         </p>
-        <span className={statusClass(run.status)}>{run.status}</span>
+        <span className={getStatusClass(run.status)}>{run.status}</span>
       </div>
       <p className="mt-0.5 text-xs text-gray-500">
         Emails found: {run.emailsFound} • Summaries sent: {run.summariesSent} •
@@ -85,13 +85,13 @@ function DecisionBreakdown({ decisions }: { decisions: DecisionCount[] }) {
   }
 
   const summary = decisions
-    .map((entry) => `${entry.count} ${decisionLabel(entry.decision)}`)
+    .map((entry) => `${entry.count} ${getDecisionLabel(entry.decision)}`)
     .join(" · ");
 
   return <p className="mt-0.5 text-xs text-gray-600">{summary}</p>;
 }
 
-function statusClass(status: RunRow["status"]) {
+function getStatusClass(status: RunRow["status"]) {
   return status === "success"
     ? "rounded-full border border-emerald-500/20 bg-emerald-500/15 px-2.5 py-0.5 text-xs text-emerald-400"
     : "rounded-full border border-red-500/20 bg-red-500/15 px-2.5 py-0.5 text-xs text-red-400";

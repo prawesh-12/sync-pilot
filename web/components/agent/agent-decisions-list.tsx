@@ -1,5 +1,5 @@
 import { getRecentDecisions } from "@/db/queries";
-import { decisionBadgeClass, decisionLabel } from "@/lib/decisions";
+import { getDecisionBadgeClass, getDecisionLabel } from "@/lib/decisions";
 import { formatRelativeTime } from "@/lib/format";
 
 type AgentDecisionsListProps = {
@@ -40,8 +40,8 @@ function DecisionRow({ decision }: { decision: DecisionRow }) {
         <p className="text-xs text-gray-500">{decision.reasoning}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <span className={badgeClass(decision.decision)}>
-          {decisionLabel(decision.decision)}
+        <span className={getBadgeClass(decision.decision)}>
+          {getDecisionLabel(decision.decision)}
         </span>
         <span className="text-xs text-gray-500">
           {formatRelativeTime(decision.createdAt)}
@@ -51,6 +51,6 @@ function DecisionRow({ decision }: { decision: DecisionRow }) {
   );
 }
 
-function badgeClass(decision: DecisionRow["decision"]) {
-  return `rounded-full border px-2.5 py-0.5 text-xs ${decisionBadgeClass(decision)}`;
+function getBadgeClass(decision: DecisionRow["decision"]) {
+  return `rounded-full border px-2.5 py-0.5 text-xs ${getDecisionBadgeClass(decision)}`;
 }

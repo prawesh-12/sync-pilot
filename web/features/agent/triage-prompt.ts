@@ -3,8 +3,13 @@ import type { GmailEmail } from "@/features/gmail/gmail";
 const TRIAGE_BODY_MAX_CHARACTERS = 4000;
 
 // System prompt for the inbox triage agent; extended with new tools over time.
-export function buildTriagePrompt(userName: string, nowIso: string) {
-  return [
+// feedbackDigest is an optional one-line summary of the user's recent overrides.
+export function buildTriagePrompt(
+  userName: string,
+  nowIso: string,
+  feedbackDigest = "",
+) {
+  const lines = [
     `You are SyncPilot's inbox triage agent for ${userName}.`,
     `Current time (ISO 8601): ${nowIso}.`,
     "For the email below, call exactly one tool:",
@@ -20,7 +25,13 @@ export function buildTriagePrompt(userName: string, nowIso: string) {
     "For draftReply, write the full reply text yourself in the body argument.",
     "Always include a one-sentence reason.",
     "When unsure between ignore and summarizeAndNotify — pick summarizeAndNotify.",
-  ].join("\n");
+  ];
+
+  if (feedbackDigest) {
+    lines.push("", feedbackDigest);
+  }
+
+  return lines.join("\n");
 }
 
 // The single email handed to the model for a triage decision.

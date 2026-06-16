@@ -45,6 +45,8 @@ export const SUBSCRIPTION_STATUS_VALUES = [
     "cancelled",
     "expired",
 ] as const;
+// How the user pushed back on an agent decision via Signal.
+export const FEEDBACK_ACTION_VALUES = ["discarded", "overridden"] as const;
 
 export type PlanValue = (typeof PLAN_VALUES)[number];
 export type ProviderValue = (typeof PROVIDER_VALUES)[number];
@@ -58,6 +60,7 @@ export type PendingActionStatusValue =
     (typeof PENDING_ACTION_STATUS_VALUES)[number];
 export type SubscriptionStatusValue =
     (typeof SUBSCRIPTION_STATUS_VALUES)[number];
+export type FeedbackActionValue = (typeof FEEDBACK_ACTION_VALUES)[number];
 
 export const users = pgTable("users", {
     id: text("id").primaryKey(),
@@ -186,6 +189,23 @@ export const agentDecisions = pgTable("agent_decisions", {
     decision: text("decision").$type<DecisionValue>().notNull(),
     reasoning: text("reasoning").notNull(),
     toolCalls: jsonb("tool_calls"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+});
+
+// Records when the user overrode an agent decision via Signal; a short digest
+// of recent rows is folded back into the triage prompt as a cheap feedback loop.
+export const agentFeedback = pgTable("agent_feedback", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    gmailMessageId: text("gmail_message_id").notNull(),
+    subject: text("subject"),
+    // The decision the agent originally made for this email.
+    decision: text("decision").$type<DecisionValue>().notNull(),
+    action: text("action").$type<FeedbackActionValue>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
         .notNull()
         .defaultNow(),

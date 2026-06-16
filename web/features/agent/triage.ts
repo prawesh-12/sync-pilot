@@ -5,6 +5,7 @@ import {
   buildTriagePrompt,
   buildTriageUserMessage,
 } from "@/features/agent/triage-prompt";
+import { buildFeedbackDigest } from "@/features/agent/feedback-digest";
 import {
   buildTriageTools,
   createDecisionRecorder,
@@ -31,9 +32,11 @@ export async function processEmails(
   decisions: EmailDecision[];
   usage: TokenUsage;
 }> {
+  const feedbackDigest = await buildFeedbackDigest(account.userId);
   const systemPrompt = buildTriagePrompt(
     account.emailAddress || DEFAULT_USER_LABEL,
     new Date().toISOString(),
+    feedbackDigest,
   );
   const model = getGroqModel();
   const decisions: EmailDecision[] = [];

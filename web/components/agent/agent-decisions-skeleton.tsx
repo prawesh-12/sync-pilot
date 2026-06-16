@@ -1,9 +1,11 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 
+const PLACEHOLDER_ROW_COUNT = 6;
+
 export function AgentDecisionsSkeleton() {
   return (
     <ul className="flex flex-col gap-2">
-      {Array.from({ length: 6 }).map((_, index) => (
+      {Array.from({ length: PLACEHOLDER_ROW_COUNT }).map((_, index) => (
         <li
           key={index}
           className="flex items-center justify-between gap-4 rounded-xl border border-[#A089E6]/10 bg-white/3 px-4 py-3"

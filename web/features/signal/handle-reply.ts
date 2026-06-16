@@ -16,6 +16,7 @@ import {
 } from "@/features/signal/parse-reply";
 import {
   markEmailDrafted,
+  recordAgentFeedback,
   resolvePendingAction,
   updatePendingActionPayload,
 } from "@/db/queries";
@@ -95,7 +96,29 @@ async function discardDraft(
   const payload = draftPayloadSchema.parse(pending.payload);
   await deleteDraftReply(accountFor(userId, payload), payload.draftId);
   await resolvePendingAction(pending.id, "discarded");
+  await logDiscardFeedback(userId, pending, payload);
   await sendSignalNotice(userId, `Discarded the draft for: ${payload.subject}`);
+}
+
+// Best-effort: a discarded draft is a clear "don't draft this" signal that the
+// triage prompt later folds in. Never block the discard ack on a logging error.
+async function logDiscardFeedback(
+  userId: string,
+  pending: PendingAction,
+  payload: DraftPayload,
+) {
+  try {
+    await recordAgentFeedback({
+      userId,
+      gmailMessageId: pending.gmailMessageId,
+      subject: payload.subject,
+      decision: "draft_reply",
+      action: "discarded",
+    });
+  } catch (error) {
+    console.error(`[SIGNAL] Failed to record feedback for userId: ${userId}`);
+    console.error(error);
+  }
 }
 
 async function reviseDraft(
