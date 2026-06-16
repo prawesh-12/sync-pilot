@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import {
   SettingsPanel,
   type SettingsSearchParams,
-} from "@/features/settings/components/settings-panel";
+} from "@/components/settings/settings-panel";
 
 type SettingsPageProps = {
   searchParams: Promise<SettingsSearchParams>;

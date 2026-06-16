@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import {
   IntegrationStatusSkeleton,
   RecentRunsSkeleton,
-} from "@/features/dashboard/components/dashboard-section-skeletons";
+} from "@/components/dashboard/dashboard-section-skeletons";
 
 export default function DashboardLoading() {
   return (

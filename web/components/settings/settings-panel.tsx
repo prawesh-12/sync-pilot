@@ -14,8 +14,8 @@ import {
 } from "@/db/queries";
 import { auth } from "@/auth";
 import { buildSignalDeviceName } from "@/features/signal/signal";
-import { EmailIntegrationCard } from "@/features/settings/components/email-card";
-import { SignalIntegrationCard } from "@/features/settings/components/signal-card";
+import { EmailIntegrationCard } from "@/components/settings/email-card";
+import { SignalIntegrationCard } from "@/components/settings/signal-card";
 
 const PHONE_NUMBER_PATTERN = /^\+\d{8,15}$/;
 

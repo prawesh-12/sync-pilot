@@ -3,13 +3,13 @@ import { auth } from "@/auth";
 import { Suspense } from "react";
 import { DashboardSettingsModal } from "@/components/dashboard/dashboard-settings-modal";
 import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
-import { DashboardIntegrationStatus } from "@/features/dashboard/components/dashboard-integration-status";
-import { DashboardRecentRuns } from "@/features/dashboard/components/dashboard-recent-runs";
+import { DashboardIntegrationStatus } from "@/components/dashboard/dashboard-integration-status";
+import { DashboardRecentRuns } from "@/components/dashboard/dashboard-recent-runs";
 import {
   IntegrationStatusSkeleton,
   RecentRunsSkeleton,
-} from "@/features/dashboard/components/dashboard-section-skeletons";
-import { SettingsPanel } from "@/features/settings/components/settings-panel";
+} from "@/components/dashboard/dashboard-section-skeletons";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 
 type DashboardPageProps = {
   searchParams: Promise<{
