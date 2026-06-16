@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runAgent, type AgentRunSummary } from "@/features/agent/run-agent";
 import {
-    getUserIdsWithGmailIntegration,
+    getActiveGmailAccounts,
     getUserIdsWithSignalIntegration,
 } from "@/db/queries";
 import { getCronSecret } from "@/config/env";
@@ -10,9 +10,12 @@ export const preferredRegion = "sin1";
 
 const UNAUTHORIZED_ERROR = "Unauthorized.";
 
-type CronRun = AgentRunSummary & {
+type SyncJob = {
     userId: string;
+    integrationId: string;
 };
+
+type CronRun = AgentRunSummary & SyncJob;
 
 export async function GET(request: Request) {
     return handleCronRequest(request);
@@ -33,27 +36,18 @@ async function handleCronRequest(request: Request) {
             );
         }
 
-        const [gmailUserIds, signalUserIds] = await Promise.all([
-            getUserIdsWithGmailIntegration(),
-            getUserIdsWithSignalIntegration(),
-        ]);
-        const signalUserIdSet = new Set(signalUserIds);
-        const userIds = gmailUserIds.filter((userId) =>
-            signalUserIdSet.has(userId),
-        );
+        const jobs = await collectSyncJobs();
         const runs: CronRun[] = [];
 
-        for (const userId of userIds) {
-            const summary = await runAgent(userId);
-            runs.push({ userId, ...summary });
+        // One job per active Gmail account. Phase 3 moves this loop to the
+        // EC2 BullMQ worker; for now each account is processed in sequence.
+        for (const job of jobs) {
+            const summary = await runAgent(job.userId, job.integrationId);
+            runs.push({ ...job, ...summary });
         }
 
         return NextResponse.json({
-            usersProcessed: userIds.length,
-            usersSkippedMissingSignal: Math.max(
-                gmailUserIds.length - userIds.length,
-                0,
-            ),
+            accountsProcessed: jobs.length,
             successfulRuns: runs.filter((run) => run.status === "success")
                 .length,
             failedRuns: runs.filter((run) => run.status === "error").length,
@@ -68,6 +62,21 @@ async function handleCronRequest(request: Request) {
             { status: 500 },
         );
     }
+}
+
+async function collectSyncJobs(): Promise<SyncJob[]> {
+    const signalUserIds = await getUserIdsWithSignalIntegration();
+    const jobs: SyncJob[] = [];
+
+    for (const userId of signalUserIds) {
+        const accounts = await getActiveGmailAccounts(userId);
+
+        for (const account of accounts) {
+            jobs.push({ userId, integrationId: account.id });
+        }
+    }
+
+    return jobs;
 }
 
 function isAuthorized(request: Request, cronSecret: string) {

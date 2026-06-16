@@ -18,3 +18,16 @@ export function sanitizeReturnTo(
 
   return value;
 }
+
+const MAX_LABEL_LENGTH = 40;
+
+/**
+ * Trim a user-supplied integration label and cap its length.
+ */
+export function sanitizeLabel(value: string | null | undefined) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, MAX_LABEL_LENGTH);
+}

@@ -36,7 +36,9 @@ export async function initiateGmailConnection(
     });
 }
 
-export async function getActiveGmailConnection(userId: string) {
+// Returns the most recently connected ACTIVE Gmail account, which is the one
+// the user just authorised in the OAuth callback.
+export async function getLatestGmailConnection(userId: string) {
     const composio = getComposio();
     const { items } = await composio.connectedAccounts.list({
         userIds: [userId],
@@ -45,13 +47,21 @@ export async function getActiveGmailConnection(userId: string) {
         orderBy: "created_at",
     });
 
-    return items[0] ?? null;
+    return [...items].sort(byNewestFirst)[0] ?? null;
+}
+
+function byNewestFirst(
+    first: { createdAt?: string },
+    second: { createdAt?: string },
+) {
+    return (second.createdAt ?? "").localeCompare(first.createdAt ?? "");
 }
 
 export async function executeGmailTool(
     userId: string,
     slug: string,
     args: Record<string, unknown> = {},
+    connectedAccountId?: string,
 ): Promise<GmailToolResult> {
     const composio = getComposio();
     const { gmailToolkitVersion } = getComposioConfig();
@@ -61,6 +71,8 @@ export async function executeGmailTool(
     const response = await composio.tools.execute(slug, {
         userId,
         arguments: args,
+        // Target a specific account so users with multiple Gmails resolve correctly.
+        ...(connectedAccountId ? { connectedAccountId } : {}),
         ...(gmailToolkitVersion
             ? { version: gmailToolkitVersion }
             : { dangerouslySkipVersionCheck: true }),

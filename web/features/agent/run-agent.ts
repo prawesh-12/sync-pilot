@@ -2,8 +2,9 @@ import { fetchEmailsInTimeWindow, type GmailEmail } from "@/features/gmail/gmail
 import { sendSignalMessage } from "@/features/signal/signal";
 import { summariseEmail } from "@/features/ai/summarise";
 import {
+    getGmailAccountById,
     saveAgentRun,
-    updateIntegrationLastRunTimestamp,
+    updateGmailAccountLastRun,
 } from "@/db/queries";
 
 const EMAIL_PROCESS_DELAY_MS = 500;
@@ -18,13 +19,19 @@ type ProcessEmailResult = {
     summarySent: boolean;
 };
 
-export async function runAgent(userId: string): Promise<AgentRunSummary> {
+export async function runAgent(
+    userId: string,
+    integrationId: string,
+): Promise<AgentRunSummary> {
     const windowEnd = new Date();
 
     try {
-        console.log(`[CRON] Starting agent run for userId: ${userId}`);
+        console.log(
+            `[CRON] Starting agent run for userId: ${userId}, integrationId: ${integrationId}`,
+        );
 
-        const emails = await fetchEmailsInTimeWindow(userId, windowEnd);
+        const account = await resolveGmailAccount(userId, integrationId);
+        const emails = await fetchEmailsInTimeWindow(account, windowEnd);
         console.log(
             `[GMAIL] Found ${emails.length} emails in current sync window`,
         );
@@ -36,7 +43,9 @@ export async function runAgent(userId: string): Promise<AgentRunSummary> {
         return summary;
     } catch (error) {
         const message = getErrorMessage(error);
-        console.error(`[CRON] Agent run failed for userId: ${userId}`);
+        console.error(
+            `[CRON] Agent run failed for userId: ${userId}, integrationId: ${integrationId}`,
+        );
         console.error(error);
 
         const result = buildErrorResult();
@@ -44,8 +53,30 @@ export async function runAgent(userId: string): Promise<AgentRunSummary> {
 
         return result;
     } finally {
-        await persistLastRunTimestamp(userId, windowEnd);
+        await persistLastRunTimestamp(integrationId, windowEnd);
     }
+}
+
+async function resolveGmailAccount(userId: string, integrationId: string) {
+    const account = await getGmailAccountById(integrationId);
+
+    if (!account || account.userId !== userId) {
+        throw new Error("Gmail integration not found for this user.");
+    }
+
+    if (!account.isActive) {
+        throw new Error("Gmail integration is disabled.");
+    }
+
+    if (!account.connectedAccountId) {
+        throw new Error("Gmail integration is missing a connected account.");
+    }
+
+    return {
+        userId,
+        connectedAccountId: account.connectedAccountId,
+        lastRunTimestamp: account.lastRunTimestamp,
+    };
 }
 
 async function processEmails(
@@ -110,12 +141,15 @@ async function processEmail(
     };
 }
 
-async function persistLastRunTimestamp(userId: string, lastRunTimestamp: Date) {
+async function persistLastRunTimestamp(
+    integrationId: string,
+    lastRunTimestamp: Date,
+) {
     try {
-        await updateIntegrationLastRunTimestamp(userId, lastRunTimestamp);
+        await updateGmailAccountLastRun(integrationId, lastRunTimestamp);
     } catch (error) {
         console.error(
-            `[CRON] Failed to persist last_run_timestamp for userId: ${userId}`,
+            `[CRON] Failed to persist last_run_timestamp for integrationId: ${integrationId}`,
         );
         console.error(error);
     }

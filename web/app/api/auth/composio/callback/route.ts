@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getActiveGmailConnection } from "@/lib/composio";
-import { saveIntegration, upsertUser } from "@/db/queries";
-import { sanitizeReturnTo } from "@/lib/utils";
+import { getLatestGmailConnection } from "@/lib/composio";
+import { getConnectedGmailAddress } from "@/features/gmail/gmail";
+import { saveGmailAccount, upsertUser } from "@/db/queries";
+import { sanitizeLabel, sanitizeReturnTo } from "@/lib/utils";
 
 const GMAIL_CONNECTED_STATUS = "connected";
 const GMAIL_FAILED_STATUS = "failed";
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
 
   const searchParams = new URL(request.url).searchParams;
   const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
+  const requestedLabel = sanitizeLabel(searchParams.get("label"));
 
   try {
     const email = session.user.email;
@@ -31,14 +33,20 @@ export async function GET(request: Request) {
       throw new Error("Composio reported a failed Gmail connection.");
     }
 
-    const connection = await getActiveGmailConnection(userId);
+    const connection = await getLatestGmailConnection(userId);
 
     if (!connection) {
       throw new Error("No active Gmail connection was found for this user.");
     }
 
+    const gmailAddress = await resolveGmailAddress(userId, connection.id);
+
     await upsertUser({ id: userId, email });
-    await saveIntegration(userId, { connectedAccountId: connection.id });
+    await saveGmailAccount(userId, {
+      connectedAccountId: connection.id,
+      emailAddress: gmailAddress,
+      label: requestedLabel || deriveLabel(gmailAddress),
+    });
 
     return NextResponse.redirect(
       getReturnUrl(request, returnTo, GMAIL_CONNECTED_STATUS),
@@ -54,6 +62,29 @@ export async function GET(request: Request) {
       getReturnUrl(request, returnTo, GMAIL_FAILED_STATUS, message),
     );
   }
+}
+
+async function resolveGmailAddress(userId: string, connectedAccountId: string) {
+  try {
+    const address = await getConnectedGmailAddress(userId, connectedAccountId);
+
+    return address ?? "";
+  } catch (error) {
+    console.error("[COMPOSIO_OAUTH] Failed to resolve connected Gmail address");
+    console.error(error);
+
+    return "";
+  }
+}
+
+function deriveLabel(gmailAddress: string) {
+  const localPart = gmailAddress.split("@")[0]?.trim();
+
+  if (!localPart) {
+    return "Gmail";
+  }
+
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1);
 }
 
 function getReturnUrl(

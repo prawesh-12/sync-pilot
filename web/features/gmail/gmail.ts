@@ -1,5 +1,4 @@
 import { executeGmailTool } from "@/lib/composio";
-import { getIntegration } from "@/db/queries";
 
 const GMAIL_FETCH_EMAILS_TOOL = "GMAIL_FETCH_EMAILS";
 const GMAIL_GET_PROFILE_TOOL = "GMAIL_GET_PROFILE";
@@ -14,29 +13,45 @@ export type GmailEmail = {
     body: string;
 };
 
+export type GmailAccountSource = {
+    userId: string;
+    connectedAccountId: string;
+    lastRunTimestamp: Date | null;
+};
+
 const EMAIL_ADDRESS_KEYS = ["emailAddress", "email_address", "email"];
 
-export async function getConnectedGmailAddress(userId: string) {
-    const result = await executeGmailTool(userId, GMAIL_GET_PROFILE_TOOL, {});
+export async function getConnectedGmailAddress(
+    userId: string,
+    connectedAccountId: string,
+) {
+    const result = await executeGmailTool(
+        userId,
+        GMAIL_GET_PROFILE_TOOL,
+        {},
+        connectedAccountId,
+    );
     const emailAddress = findString(result.data, EMAIL_ADDRESS_KEYS);
 
     return emailAddress || null;
 }
 
-export async function fetchEmailsInTimeWindow(userId: string, windowEnd: Date) {
-    const integration = await getIntegration(userId);
-
-    if (!integration) {
-        throw new Error("Gmail integration not found.");
-    }
-
-    const windowStart = getWindowStart(integration.lastRunTimestamp, windowEnd);
+export async function fetchEmailsInTimeWindow(
+    account: GmailAccountSource,
+    windowEnd: Date,
+) {
+    const windowStart = getWindowStart(account.lastRunTimestamp, windowEnd);
     const query = buildTimeWindowQuery(windowStart, windowEnd);
 
-    const result = await executeGmailTool(userId, GMAIL_FETCH_EMAILS_TOOL, {
-        query,
-        max_results: GMAIL_MAX_RESULTS,
-    });
+    const result = await executeGmailTool(
+        account.userId,
+        GMAIL_FETCH_EMAILS_TOOL,
+        {
+            query,
+            max_results: GMAIL_MAX_RESULTS,
+        },
+        account.connectedAccountId,
+    );
 
     return extractMessages(result.data).reduce<GmailEmail[]>(
         (emails, rawMessage) => {

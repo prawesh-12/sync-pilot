@@ -1,12 +1,14 @@
 import { cache } from "react";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { integrations, signalIntegrations } from "@/db/schema";
 
 const GMAIL_PROVIDER = "composio";
 
-type ComposioIntegration = {
+type GmailAccountInput = {
   connectedAccountId: string;
+  emailAddress: string;
+  label: string;
 };
 
 type SignalIntegrationInput = {
@@ -15,36 +17,68 @@ type SignalIntegrationInput = {
   recipientNumber: string;
 };
 
-export async function saveIntegration(
-  userId: string,
-  composioIntegration: ComposioIntegration,
-) {
+export async function saveGmailAccount(userId: string, input: GmailAccountInput) {
   const db = getDb();
-  const [integration] = await db
+  const [account] = await db
     .insert(integrations)
     .values({
       userId,
       provider: GMAIL_PROVIDER,
-      connectedAccountId: composioIntegration.connectedAccountId,
+      connectedAccountId: input.connectedAccountId,
+      emailAddress: input.emailAddress,
+      label: input.label,
     })
     .onConflictDoUpdate({
-      target: [integrations.userId, integrations.provider],
+      target: [integrations.userId, integrations.connectedAccountId],
       set: {
-        connectedAccountId: composioIntegration.connectedAccountId,
+        emailAddress: input.emailAddress,
+        label: input.label,
+        isActive: true,
       },
     })
     .returning();
 
-  return integration;
+  return account;
 }
 
-export const getIntegration = cache(async function getIntegration(userId: string) {
+export const getActiveGmailAccounts = cache(async function getActiveGmailAccounts(
+  userId: string,
+) {
   const db = getDb();
-  const [integration] = await db
+
+  return db
     .select({
+      id: integrations.id,
       connectedAccountId: integrations.connectedAccountId,
+      emailAddress: integrations.emailAddress,
+      label: integrations.label,
       lastRunTimestamp: integrations.lastRunTimestamp,
-      provider: integrations.provider,
+    })
+    .from(integrations)
+    .where(
+      and(
+        eq(integrations.userId, userId),
+        eq(integrations.provider, GMAIL_PROVIDER),
+        eq(integrations.isActive, true),
+      ),
+    )
+    .orderBy(asc(integrations.createdAt));
+});
+
+export const getGmailAccounts = cache(async function getGmailAccounts(
+  userId: string,
+) {
+  const db = getDb();
+
+  return db
+    .select({
+      id: integrations.id,
+      connectedAccountId: integrations.connectedAccountId,
+      emailAddress: integrations.emailAddress,
+      label: integrations.label,
+      isActive: integrations.isActive,
+      lastRunTimestamp: integrations.lastRunTimestamp,
+      createdAt: integrations.createdAt,
     })
     .from(integrations)
     .where(
@@ -53,56 +87,71 @@ export const getIntegration = cache(async function getIntegration(userId: string
         eq(integrations.provider, GMAIL_PROVIDER),
       ),
     )
-    .limit(1);
-
-  return integration ?? null;
+    .orderBy(asc(integrations.createdAt));
 });
 
-export async function getUserIdsWithGmailIntegration() {
+export async function getGmailAccountById(integrationId: string) {
   const db = getDb();
-  const rows = await db
-    .selectDistinct({ userId: integrations.userId })
+  const [account] = await db
+    .select({
+      id: integrations.id,
+      userId: integrations.userId,
+      connectedAccountId: integrations.connectedAccountId,
+      emailAddress: integrations.emailAddress,
+      isActive: integrations.isActive,
+      lastRunTimestamp: integrations.lastRunTimestamp,
+    })
     .from(integrations)
-    .where(eq(integrations.provider, GMAIL_PROVIDER));
+    .where(eq(integrations.id, integrationId))
+    .limit(1);
 
-  return rows.map((row) => row.userId);
+  return account ?? null;
 }
 
-export async function updateIntegrationLastRunTimestamp(
+export async function setGmailAccountActive(
+  integrationId: string,
   userId: string,
+  isActive: boolean,
+) {
+  const db = getDb();
+  const updatedRows = await db
+    .update(integrations)
+    .set({ isActive })
+    .where(
+      and(eq(integrations.id, integrationId), eq(integrations.userId, userId)),
+    )
+    .returning({ id: integrations.id });
+
+  return updatedRows.length > 0;
+}
+
+export async function removeGmailAccount(integrationId: string, userId: string) {
+  const db = getDb();
+  const deletedRows = await db
+    .delete(integrations)
+    .where(
+      and(eq(integrations.id, integrationId), eq(integrations.userId, userId)),
+    )
+    .returning({ id: integrations.id });
+
+  return deletedRows.length > 0;
+}
+
+export async function updateGmailAccountLastRun(
+  integrationId: string,
   lastRunTimestamp: Date,
 ) {
   const db = getDb();
-  const [integration] = await db
+  const [account] = await db
     .update(integrations)
     .set({ lastRunTimestamp })
-    .where(
-      and(
-        eq(integrations.userId, userId),
-        eq(integrations.provider, GMAIL_PROVIDER),
-      ),
-    )
+    .where(eq(integrations.id, integrationId))
     .returning({
       id: integrations.id,
       lastRunTimestamp: integrations.lastRunTimestamp,
     });
 
-  return integration ?? null;
-}
-
-export async function disconnectGmailIntegration(userId: string) {
-  const db = getDb();
-  const deletedRows = await db
-    .delete(integrations)
-    .where(
-      and(
-        eq(integrations.userId, userId),
-        eq(integrations.provider, GMAIL_PROVIDER),
-      ),
-    )
-    .returning({ id: integrations.id });
-
-  return deletedRows.length > 0;
+  return account ?? null;
 }
 
 export async function upsertSignalIntegration(

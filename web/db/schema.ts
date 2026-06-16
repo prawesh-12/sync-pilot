@@ -1,4 +1,5 @@
 import {
+    boolean,
     integer,
     pgTable,
     text,
@@ -36,6 +37,9 @@ export const integrations = pgTable(
             .notNull()
             .default("composio"),
         connectedAccountId: text("connected_account_id"),
+        emailAddress: text("email_address"),
+        label: text("label"),
+        isActive: boolean("is_active").notNull().default(true),
         accessTokenEncrypted: text("access_token_encrypted"),
         refreshTokenEncrypted: text("refresh_token_encrypted"),
         lastRunTimestamp: timestamp("last_run_timestamp", {
@@ -45,10 +49,11 @@ export const integrations = pgTable(
             .notNull()
             .defaultNow(),
     },
+    // One user can link many Gmail accounts; uniqueness is per connected account.
     (table) => [
-        unique("integrations_user_provider_unique").on(
+        unique("integrations_user_connected_account_unique").on(
             table.userId,
-            table.provider,
+            table.connectedAccountId,
         ),
     ],
 );

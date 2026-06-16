@@ -1,23 +1,17 @@
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { PendingLink } from "@/components/pending-link";
 import { Button } from "@/components/ui/button";
 import { ctaButtonTheme } from "@/components/cta-button-class";
 import { isSignalConfigured } from "@/config/env";
-import {
-  disconnectGmailIntegration,
-  disconnectSignalIntegration,
-  getIntegration,
-  getSignalIntegration,
-  upsertSignalIntegration,
-  upsertUser,
-} from "@/db/queries";
-import { auth } from "@/auth";
+import { getGmailAccounts, getSignalIntegration } from "@/db/queries";
 import { buildSignalDeviceName } from "@/features/signal/signal";
-import { EmailIntegrationCard } from "@/components/settings/email-card";
+import { GmailAccountsCard } from "@/components/settings/gmail-accounts-card";
 import { SignalIntegrationCard } from "@/components/settings/signal-card";
-
-const PHONE_NUMBER_PATTERN = /^\+\d{8,15}$/;
+import {
+  disconnectSignalAction,
+  removeGmailAccountAction,
+  saveSignalIntegrationAction,
+  toggleGmailAccountAction,
+} from "@/components/settings/settings-actions";
 
 export type SettingsSearchParams = {
   gmail?: string | string[];
@@ -26,177 +20,49 @@ export type SettingsSearchParams = {
 };
 
 type SettingsPanelVariant = "page" | "popup";
-type GmailIntegration = Awaited<ReturnType<typeof getIntegration>>;
 
 type SettingsPanelProps = {
   userId: string;
   searchParams: SettingsSearchParams;
   variant?: SettingsPanelVariant;
-  integration?: GmailIntegration;
 };
 
 export async function SettingsPanel({
   userId,
   searchParams,
   variant = "page",
-  integration,
 }: SettingsPanelProps) {
-  const gmailStatus = Array.isArray(searchParams.gmail)
-    ? searchParams.gmail[0]
-    : searchParams.gmail;
-  const signalStatus = Array.isArray(searchParams.signal)
-    ? searchParams.signal[0]
-    : searchParams.signal;
-  const signalError = Array.isArray(searchParams.signalError)
-    ? searchParams.signalError[0]
-    : searchParams.signalError;
-  const integrationPromise =
-    integration === undefined ? getIntegration(userId) : Promise.resolve(integration);
-  const [resolvedIntegration, signalIntegration] = await Promise.all([
-    integrationPromise,
+  const gmailStatus = firstValue(searchParams.gmail);
+  const signalStatus = firstValue(searchParams.signal);
+  const signalError = firstValue(searchParams.signalError);
+
+  const [gmailAccounts, signalIntegration] = await Promise.all([
+    getGmailAccounts(userId),
     getSignalIntegration(userId),
   ]);
-  const isConnected = Boolean(resolvedIntegration);
+
   const isSignalConnected = Boolean(signalIntegration);
-  const isSignalServiceConfigured = isSignalConfigured();
   const signalDeviceName =
     signalIntegration?.deviceName || buildSignalDeviceName(userId);
-  const senderNumber = signalIntegration?.senderNumber || "";
-  const recipientNumber = signalIntegration?.recipientNumber || "";
-  const emailReturnTo =
+  const returnTo =
     variant === "popup" ? "/dashboard?settings=open" : "/settings";
 
-  async function disconnectGoogleAction() {
-    "use server";
-
-    const actionSession = await auth();
-    const actionUserId = actionSession?.user?.id;
-
-    if (!actionUserId) {
-      redirect("/sign-in");
-    }
-
-    await disconnectGmailIntegration(actionUserId);
-    revalidatePath("/dashboard");
-    revalidatePath("/settings");
-
-    if (variant === "popup") {
-      redirect("/dashboard?settings=open&gmail=disconnected");
-    }
-
-    redirect("/settings?gmail=disconnected");
-  }
-
-  async function saveSignalIntegrationAction(formData: FormData) {
-    "use server";
-
-    const actionSession = await auth();
-    const actionUserId = actionSession?.user?.id;
-
-    if (!actionUserId) {
-      redirect("/sign-in");
-    }
-
-    const email = actionSession.user.email;
-
-    if (!email) {
-      redirect(
-        buildSignalSettingsUrl(variant, "failed", "Missing account email."),
-      );
-    }
-
-    const senderNumberValue = normalizePhoneNumber(
-      formData.get("senderNumber"),
-    );
-    const recipientNumberValue = normalizePhoneNumber(
-      formData.get("recipientNumber"),
-    );
-
-    if (!isValidPhoneNumber(senderNumberValue)) {
-      redirect(
-        buildSignalSettingsUrl(
-          variant,
-          "failed",
-          "Sender number must be in E.164 format (example: +14155550123).",
-        ),
-      );
-    }
-
-    if (!isValidPhoneNumber(recipientNumberValue)) {
-      redirect(
-        buildSignalSettingsUrl(
-          variant,
-          "failed",
-          "Recipient number must be in E.164 format (example: +14155550123).",
-        ),
-      );
-    }
-
-    await upsertUser({ id: actionUserId, email });
-    await upsertSignalIntegration(actionUserId, {
-      deviceName: signalDeviceName,
-      senderNumber: senderNumberValue,
-      recipientNumber: recipientNumberValue,
-    });
-
-    revalidatePath("/dashboard");
-    revalidatePath("/settings");
-    redirect(buildSignalSettingsUrl(variant, "saved"));
-  }
-
-  async function disconnectSignalAction() {
-    "use server";
-
-    const actionSession = await auth();
-    const actionUserId = actionSession?.user?.id;
-
-    if (!actionUserId) {
-      redirect("/sign-in");
-    }
-
-    await disconnectSignalIntegration(actionUserId);
-    revalidatePath("/dashboard");
-    revalidatePath("/settings");
-    redirect(buildSignalSettingsUrl(variant, "disconnected"));
-  }
-
-  const disconnectedBanner =
-    gmailStatus === "disconnected" ? (
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        Gmail integration disconnected.
-      </div>
-    ) : null;
-
-  const signalSavedBanner =
-    signalStatus === "saved" ? (
-      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-        Signal integration saved.
-      </div>
-    ) : null;
-
-  const signalDisconnectedBanner =
-    signalStatus === "disconnected" ? (
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-        Signal integration disconnected.
-      </div>
-    ) : null;
-
-  const signalFailedBanner =
-    signalStatus === "failed" ? (
-      <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-        Failed to save Signal integration.
-        {signalError ? ` ${signalError}` : ""}
-      </div>
-    ) : null;
+  const banners = (
+    <SettingsBanners
+      gmailStatus={gmailStatus}
+      signalStatus={signalStatus}
+      signalError={signalError}
+    />
+  );
 
   const emailSection = (
     <section className="space-y-2">
-      <EmailIntegrationCard
-        userId={userId}
-        isConnected={isConnected}
-        integration={resolvedIntegration}
-        returnTo={emailReturnTo}
-        disconnectAction={disconnectGoogleAction}
+      <GmailAccountsCard
+        accounts={gmailAccounts}
+        variant={variant}
+        returnTo={returnTo}
+        toggleAction={toggleGmailAccountAction}
+        removeAction={removeGmailAccountAction}
       />
     </section>
   );
@@ -204,11 +70,12 @@ export async function SettingsPanel({
   const signalSection = (
     <section className="space-y-2">
       <SignalIntegrationCard
+        variant={variant}
         signalDeviceName={signalDeviceName}
         isSignalConnected={isSignalConnected}
-        isSignalServiceConfigured={isSignalServiceConfigured}
-        senderNumber={senderNumber}
-        recipientNumber={recipientNumber}
+        isSignalServiceConfigured={isSignalConfigured()}
+        senderNumber={signalIntegration?.senderNumber || ""}
+        recipientNumber={signalIntegration?.recipientNumber || ""}
         saveAction={saveSignalIntegrationAction}
         disconnectAction={disconnectSignalAction}
       />
@@ -218,10 +85,7 @@ export async function SettingsPanel({
   if (variant === "popup") {
     return (
       <div className="mx-auto flex max-h-[90dvh] w-full flex-col gap-6 overflow-y-auto px-4 pt-10 pb-10 sm:max-h-none sm:max-w-4xl sm:overflow-visible sm:px-6 sm:py-10">
-        {disconnectedBanner}
-        {signalSavedBanner}
-        {signalDisconnectedBanner}
-        {signalFailedBanner}
+        {banners}
         {emailSection}
         {signalSection}
       </div>
@@ -242,40 +106,65 @@ export async function SettingsPanel({
         </Button>
       </section>
 
-      {disconnectedBanner}
-      {signalSavedBanner}
-      {signalDisconnectedBanner}
-      {signalFailedBanner}
+      {banners}
       {emailSection}
       {signalSection}
     </main>
   );
 }
 
-function normalizePhoneNumber(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value.trim().replace(/\s+/g, "");
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-function isValidPhoneNumber(value: string) {
-  return PHONE_NUMBER_PATTERN.test(value);
+function SettingsBanners({
+  gmailStatus,
+  signalStatus,
+  signalError,
+}: {
+  gmailStatus?: string;
+  signalStatus?: string;
+  signalError?: string;
+}) {
+  return (
+    <>
+      {gmailStatus === "disconnected" ? (
+        <Banner tone="warning">Gmail account removed.</Banner>
+      ) : null}
+      {signalStatus === "saved" ? (
+        <Banner tone="success">Signal integration saved.</Banner>
+      ) : null}
+      {signalStatus === "disconnected" ? (
+        <Banner tone="warning">Signal integration disconnected.</Banner>
+      ) : null}
+      {signalStatus === "failed" ? (
+        <Banner tone="error">
+          Failed to save Signal integration.
+          {signalError ? ` ${signalError}` : ""}
+        </Banner>
+      ) : null}
+    </>
+  );
 }
 
-function buildSignalSettingsUrl(
-  variant: SettingsPanelVariant,
-  signalStatus: "saved" | "failed" | "disconnected",
-  signalError?: string,
-) {
-  const basePath = variant === "popup" ? "/dashboard?settings=open" : "/settings";
-  const querySeparator = basePath.includes("?") ? "&" : "?";
-  let url = `${basePath}${querySeparator}signal=${signalStatus}`;
+const BANNER_TONES = {
+  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+  warning: "border-amber-500/30 bg-amber-500/10 text-amber-100",
+  error: "border-red-500/30 bg-red-500/10 text-red-200",
+} as const;
 
-  if (signalError) {
-    url += `&signalError=${encodeURIComponent(signalError)}`;
-  }
-
-  return url;
+function Banner({
+  tone,
+  children,
+}: {
+  tone: keyof typeof BANNER_TONES;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm ${BANNER_TONES[tone]}`}
+    >
+      {children}
+    </div>
+  );
 }

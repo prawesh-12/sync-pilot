@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { initiateGmailConnection } from "@/lib/composio";
-import { sanitizeReturnTo } from "@/lib/utils";
+import { sanitizeLabel, sanitizeReturnTo } from "@/lib/utils";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -13,8 +13,14 @@ export async function GET(request: Request) {
 
   const requestUrl = new URL(request.url);
   const returnTo = sanitizeReturnTo(requestUrl.searchParams.get("returnTo"));
+  const label = sanitizeLabel(requestUrl.searchParams.get("label"));
   const callback = new URL("/api/auth/composio/callback", request.url);
   callback.searchParams.set("returnTo", returnTo);
+
+  if (label) {
+    callback.searchParams.set("label", label);
+  }
+
   const connection = await initiateGmailConnection(userId, callback.toString());
 
   if (!connection.redirectUrl) {
