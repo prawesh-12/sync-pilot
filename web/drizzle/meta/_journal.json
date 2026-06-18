@@ -64,6 +64,13 @@
       "when": 1781624852633,
       "tag": "0008_lame_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781764997120,
+      "tag": "0009_narrow_smasher",
+      "breakpoints": true
     }
   ]
 }
