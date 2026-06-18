@@ -19,7 +19,5 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   const params = await searchParams;
 
-  return (
-    <SettingsPanel userId={userId} searchParams={params} variant="page" />
-  );
+  return <SettingsPanel userId={userId} searchParams={params} />;
 }

@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Suspense } from "react";
-import { DashboardSettingsModal } from "@/components/dashboard/dashboard-settings-modal";
-import { SettingsPopupSkeleton } from "@/components/dashboard/settings-popup-skeleton";
+import { PendingLink } from "@/components/pending-link";
+import { Button } from "@/components/ui/button";
+import { ctaButtonTheme } from "@/components/cta-button-class";
 import { DashboardIntegrationStatus } from "@/components/dashboard/dashboard-integration-status";
 import { BillingCard } from "@/components/dashboard/billing-card";
 import { UsageCard } from "@/components/dashboard/usage-card";
@@ -12,7 +13,6 @@ import {
   RecentRunsSkeleton,
   UsageSkeleton,
 } from "@/components/dashboard/dashboard-section-skeletons";
-import { SettingsPanel } from "@/components/settings/settings-panel";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -34,14 +34,14 @@ export default async function DashboardPage({
     redirect("/sign-in");
   }
 
-  const gmailStatus = Array.isArray(params.gmail) ? params.gmail[0] : params.gmail;
-  const gmailError = Array.isArray(params.gmailError)
-    ? params.gmailError[0]
-    : params.gmailError;
-  const settingsParam = Array.isArray(params.settings)
-    ? params.settings[0]
-    : params.settings;
+  const gmailStatus = firstValue(params.gmail);
+  const gmailError = firstValue(params.gmailError);
+  const settingsParam = firstValue(params.settings);
   const isSettingsOpen = settingsParam === "open";
+
+  if (isSettingsOpen) {
+    redirect(buildSettingsRedirect(params));
+  }
 
   return (
     <main className="relative flex w-full flex-1 flex-col overflow-x-hidden bg-[#07070f] text-white sm:overflow-hidden">
@@ -56,21 +56,9 @@ export default async function DashboardPage({
               Monitor Gmail connection status and recent SyncPilot runs.
             </p>
           </div>
-          <DashboardSettingsModal isOpen={isSettingsOpen}>
-            {isSettingsOpen ? (
-              <Suspense fallback={<SettingsPopupSkeleton />}>
-                <SettingsPanel
-                  userId={userId}
-                  searchParams={{
-                    gmail: params.gmail,
-                    signal: params.signal,
-                    signalError: params.signalError,
-                  }}
-                  variant="popup"
-                />
-              </Suspense>
-            ) : null}
-          </DashboardSettingsModal>
+          <Button asChild className={ctaButtonTheme}>
+            <PendingLink href="/settings">Connection Setting</PendingLink>
+          </Button>
         </section>
 
         {gmailStatus === "connected" ? (
@@ -103,4 +91,33 @@ export default async function DashboardPage({
       </div>
     </main>
   );
+}
+
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function buildSettingsRedirect(
+  params: Awaited<DashboardPageProps["searchParams"]>,
+) {
+  const query = new URLSearchParams();
+
+  appendQueryValue(query, "gmail", firstValue(params.gmail));
+  appendQueryValue(query, "gmailError", firstValue(params.gmailError));
+  appendQueryValue(query, "signal", firstValue(params.signal));
+  appendQueryValue(query, "signalError", firstValue(params.signalError));
+
+  const search = query.toString();
+
+  return search ? `/settings?${search}` : "/settings";
+}
+
+function appendQueryValue(
+  query: URLSearchParams,
+  key: string,
+  value: string | undefined,
+) {
+  if (value) {
+    query.set(key, value);
+  }
 }

@@ -6,7 +6,6 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { SignalQrModal } from "@/components/dashboard/signal-qr-modal";
 
 export type SignalIntegrationCardProps = {
-    variant: "page" | "popup";
     signalDeviceName: string;
     isSignalConnected: boolean;
     isSignalServiceConfigured: boolean;
@@ -17,7 +16,6 @@ export type SignalIntegrationCardProps = {
 };
 
 export function SignalIntegrationCard({
-    variant,
     signalDeviceName,
     isSignalConnected,
     isSignalServiceConfigured,
@@ -57,7 +55,6 @@ export function SignalIntegrationCard({
                 )}
 
                 <form action={saveAction} className="space-y-4">
-                    <input type="hidden" name="variant" value={variant} />
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                             <label
@@ -99,7 +96,6 @@ export function SignalIntegrationCard({
 
                 {isSignalConnected ? (
                     <form action={disconnectAction} className="w-full sm:w-auto">
-                        <input type="hidden" name="variant" value={variant} />
                         <Button type="submit" variant="destructive" className="w-full sm:w-auto">
                             Disconnect Signal
                         </Button>

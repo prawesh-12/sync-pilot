@@ -14,12 +14,6 @@ import { buildSignalDeviceName } from "@/features/signal/signal";
 
 const PHONE_NUMBER_PATTERN = /^\+\d{8,15}$/;
 
-type SettingsVariant = "page" | "popup";
-
-function readVariant(formData: FormData): SettingsVariant {
-  return formData.get("variant") === "popup" ? "popup" : "page";
-}
-
 function revalidateSettings() {
   revalidatePath("/dashboard");
   revalidatePath("/settings");
@@ -29,7 +23,6 @@ export async function saveSignalIntegrationAction(formData: FormData) {
   const session = await auth();
   const userId = session?.user?.id;
   const email = session?.user?.email;
-  const variant = readVariant(formData);
 
   if (!userId || !email) {
     redirect("/sign-in");
@@ -40,7 +33,7 @@ export async function saveSignalIntegrationAction(formData: FormData) {
   const validationError = validateNumbers(senderNumber, recipientNumber);
 
   if (validationError) {
-    redirect(buildSignalSettingsUrl(variant, "failed", validationError));
+    redirect(buildSignalSettingsUrl("failed", validationError));
   }
 
   await upsertUser({ id: userId, email });
@@ -51,13 +44,12 @@ export async function saveSignalIntegrationAction(formData: FormData) {
   });
 
   revalidateSettings();
-  redirect(buildSignalSettingsUrl(variant, "saved"));
+  redirect(buildSignalSettingsUrl("saved"));
 }
 
-export async function disconnectSignalAction(formData: FormData) {
+export async function disconnectSignalAction() {
   const session = await auth();
   const userId = session?.user?.id;
-  const variant = readVariant(formData);
 
   if (!userId) {
     redirect("/sign-in");
@@ -65,13 +57,12 @@ export async function disconnectSignalAction(formData: FormData) {
 
   await disconnectSignalIntegration(userId);
   revalidateSettings();
-  redirect(buildSignalSettingsUrl(variant, "disconnected"));
+  redirect(buildSignalSettingsUrl("disconnected"));
 }
 
 export async function toggleGmailAccountAction(formData: FormData) {
   const session = await auth();
   const userId = session?.user?.id;
-  const variant = readVariant(formData);
 
   if (!userId) {
     redirect("/sign-in");
@@ -85,13 +76,12 @@ export async function toggleGmailAccountAction(formData: FormData) {
     revalidateSettings();
   }
 
-  redirect(settingsBasePath(variant));
+  redirect(settingsBasePath());
 }
 
 export async function removeGmailAccountAction(formData: FormData) {
   const session = await auth();
   const userId = session?.user?.id;
-  const variant = readVariant(formData);
 
   if (!userId) {
     redirect("/sign-in");
@@ -104,7 +94,7 @@ export async function removeGmailAccountAction(formData: FormData) {
     revalidateSettings();
   }
 
-  redirect(buildGmailSettingsUrl(variant, "disconnected"));
+  redirect(buildGmailSettingsUrl("disconnected"));
 }
 
 function normalizePhoneNumber(value: FormDataEntryValue | null) {
@@ -127,8 +117,8 @@ function validateNumbers(senderNumber: string, recipientNumber: string) {
   return "";
 }
 
-function settingsBasePath(variant: SettingsVariant) {
-  return variant === "popup" ? "/dashboard?settings=open" : "/settings";
+function settingsBasePath() {
+  return "/settings";
 }
 
 function appendQuery(basePath: string, query: string) {
@@ -138,11 +128,10 @@ function appendQuery(basePath: string, query: string) {
 }
 
 function buildSignalSettingsUrl(
-  variant: SettingsVariant,
   signalStatus: "saved" | "failed" | "disconnected",
   signalError?: string,
 ) {
-  let url = appendQuery(settingsBasePath(variant), `signal=${signalStatus}`);
+  let url = appendQuery(settingsBasePath(), `signal=${signalStatus}`);
 
   if (signalError) {
     url += `&signalError=${encodeURIComponent(signalError)}`;
@@ -152,8 +141,7 @@ function buildSignalSettingsUrl(
 }
 
 function buildGmailSettingsUrl(
-  variant: SettingsVariant,
   gmailStatus: "disconnected",
 ) {
-  return appendQuery(settingsBasePath(variant), `gmail=${gmailStatus}`);
+  return appendQuery(settingsBasePath(), `gmail=${gmailStatus}`);
 }

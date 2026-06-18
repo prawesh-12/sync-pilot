@@ -33,6 +33,7 @@ export async function initiateGmailConnection(
 
     return composio.connectedAccounts.link(userId, gmailAuthConfigId, {
         callbackUrl,
+        allowMultiple: true,
     });
 }
 

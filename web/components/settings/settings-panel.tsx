@@ -15,24 +15,22 @@ import {
 
 export type SettingsSearchParams = {
   gmail?: string | string[];
+  gmailError?: string | string[];
   signal?: string | string[];
   signalError?: string | string[];
 };
 
-type SettingsPanelVariant = "page" | "popup";
-
 type SettingsPanelProps = {
   userId: string;
   searchParams: SettingsSearchParams;
-  variant?: SettingsPanelVariant;
 };
 
 export async function SettingsPanel({
   userId,
   searchParams,
-  variant = "page",
 }: SettingsPanelProps) {
   const gmailStatus = firstValue(searchParams.gmail);
+  const gmailError = firstValue(searchParams.gmailError);
   const signalStatus = firstValue(searchParams.signal);
   const signalError = firstValue(searchParams.signalError);
 
@@ -44,12 +42,11 @@ export async function SettingsPanel({
   const isSignalConnected = Boolean(signalIntegration);
   const signalDeviceName =
     signalIntegration?.deviceName || buildSignalDeviceName(userId);
-  const returnTo =
-    variant === "popup" ? "/dashboard?settings=open" : "/settings";
 
   const banners = (
     <SettingsBanners
       gmailStatus={gmailStatus}
+      gmailError={gmailError}
       signalStatus={signalStatus}
       signalError={signalError}
     />
@@ -59,8 +56,7 @@ export async function SettingsPanel({
     <section className="space-y-2">
       <GmailAccountsCard
         accounts={gmailAccounts}
-        variant={variant}
-        returnTo={returnTo}
+        returnTo="/settings"
         toggleAction={toggleGmailAccountAction}
         removeAction={removeGmailAccountAction}
       />
@@ -70,7 +66,6 @@ export async function SettingsPanel({
   const signalSection = (
     <section className="space-y-2">
       <SignalIntegrationCard
-        variant={variant}
         signalDeviceName={signalDeviceName}
         isSignalConnected={isSignalConnected}
         isSignalServiceConfigured={isSignalConfigured()}
@@ -81,16 +76,6 @@ export async function SettingsPanel({
       />
     </section>
   );
-
-  if (variant === "popup") {
-    return (
-      <div className="mx-auto flex max-h-[90dvh] w-full flex-col gap-6 overflow-y-auto px-4 pt-10 pb-10 sm:max-h-none sm:max-w-4xl sm:overflow-visible sm:px-6 sm:py-10">
-        {banners}
-        {emailSection}
-        {signalSection}
-      </div>
-    );
-  }
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-4xl flex-col gap-6 px-4 py-10 sm:px-6">
@@ -119,17 +104,28 @@ function firstValue(value: string | string[] | undefined) {
 
 function SettingsBanners({
   gmailStatus,
+  gmailError,
   signalStatus,
   signalError,
 }: {
   gmailStatus?: string;
+  gmailError?: string;
   signalStatus?: string;
   signalError?: string;
 }) {
   return (
     <>
+      {gmailStatus === "connected" ? (
+        <Banner tone="success">Gmail connected successfully.</Banner>
+      ) : null}
       {gmailStatus === "disconnected" ? (
         <Banner tone="warning">Gmail account removed.</Banner>
+      ) : null}
+      {gmailStatus === "failed" ? (
+        <Banner tone="error">
+          Gmail connection failed.
+          {gmailError ? ` ${gmailError}` : ""}
+        </Banner>
       ) : null}
       {signalStatus === "saved" ? (
         <Banner tone="success">Signal integration saved.</Banner>

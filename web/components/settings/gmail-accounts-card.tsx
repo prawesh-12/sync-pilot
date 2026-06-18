@@ -8,7 +8,6 @@ type GmailAccount = Awaited<ReturnType<typeof getGmailAccounts>>[number];
 
 type GmailAccountsCardProps = {
   accounts: GmailAccount[];
-  variant: "page" | "popup";
   returnTo: string;
   toggleAction: (formData: FormData) => Promise<void>;
   removeAction: (formData: FormData) => Promise<void>;
@@ -16,7 +15,6 @@ type GmailAccountsCardProps = {
 
 export function GmailAccountsCard({
   accounts,
-  variant,
   returnTo,
   toggleAction,
   removeAction,
@@ -42,7 +40,6 @@ export function GmailAccountsCard({
               <GmailAccountRow
                 key={account.id}
                 account={account}
-                variant={variant}
                 toggleAction={toggleAction}
                 removeAction={removeAction}
               />
@@ -58,12 +55,10 @@ export function GmailAccountsCard({
 
 function GmailAccountRow({
   account,
-  variant,
   toggleAction,
   removeAction,
 }: {
   account: GmailAccount;
-  variant: "page" | "popup";
   toggleAction: (formData: FormData) => Promise<void>;
   removeAction: (formData: FormData) => Promise<void>;
 }) {
@@ -85,7 +80,6 @@ function GmailAccountRow({
       <div className="flex shrink-0 items-center gap-2">
         <form action={toggleAction}>
           <input type="hidden" name="integrationId" value={account.id} />
-          <input type="hidden" name="variant" value={variant} />
           <input
             type="hidden"
             name="nextActive"
@@ -98,7 +92,6 @@ function GmailAccountRow({
 
         <form action={removeAction}>
           <input type="hidden" name="integrationId" value={account.id} />
-          <input type="hidden" name="variant" value={variant} />
           <Button type="submit" variant="destructive" size="sm">
             Remove
           </Button>

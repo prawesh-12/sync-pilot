@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import {
-  ArrowRight,
   LogIn,
   Mail,
   Phone,
@@ -12,9 +11,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { LandingAuth } from "@/components/landing-auth";
-import { PendingLink } from "@/components/pending-link";
 import { SiteFooter } from "@/components/site-footer";
-import { ctaButtonClass } from "@/components/cta-button-class";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -44,7 +41,7 @@ const steps: Step[] = [
     icon: Settings,
     title: "Open Connection Settings",
     description:
-      'On the dashboard, click the "Connection Setting" button to open the setup panel.',
+      'On the dashboard, click the "Connection Setting" button to open the settings page.',
   },
   {
     icon: Mail,
