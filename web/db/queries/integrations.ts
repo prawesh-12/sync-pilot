@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { integrations, signalIntegrations } from "@/db/schema";
+import { integrations, pendingActions, signalIntegrations } from "@/db/schema";
 
 const GMAIL_PROVIDER = "composio";
 
@@ -215,6 +215,25 @@ export async function getUserIdsWithSignalIntegration() {
     .from(signalIntegrations);
 
   return rows.map((row) => row.userId);
+}
+
+export async function getSignalIntegrationsWithPendingActions() {
+  const db = getDb();
+
+  return db
+    .selectDistinct({
+      userId: signalIntegrations.userId,
+      senderNumber: signalIntegrations.senderNumber,
+      recipientNumber: signalIntegrations.recipientNumber,
+    })
+    .from(signalIntegrations)
+    .innerJoin(
+      pendingActions,
+      and(
+        eq(pendingActions.userId, signalIntegrations.userId),
+        eq(pendingActions.status, "pending"),
+      ),
+    );
 }
 
 export async function disconnectSignalIntegration(userId: string) {

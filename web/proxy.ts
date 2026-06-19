@@ -10,7 +10,8 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/sign-up/,
   /^\/api\/auth(\/.*)?$/,
   /^\/api\/webhooks/,
-  /^\/api\/cron\/fetch-emails/,
+  // All cron routes authenticate via the cron secret in their own handlers.
+  /^\/api\/cron(\/.*)?$/,
 ];
 
 function isPublicRoute(pathname: string) {

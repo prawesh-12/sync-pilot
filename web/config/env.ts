@@ -22,6 +22,7 @@ const envSchema = z.object({
     SIGNAL_RECIPIENT_NUMBER: z.string().trim().optional().default(""),
     CRON_SECRET: z.string().trim().optional().default(""),
     SYNC_SECRET: z.string().trim().optional().default(""),
+    INTAKE_SERVER_URL: z.string().trim().optional().default(""),
     RAZORPAY_KEY_ID: z.string().trim().optional().default(""),
     RAZORPAY_KEY_SECRET: z.string().trim().optional().default(""),
     RAZORPAY_PLAN_ID: z.string().trim().optional().default(""),
@@ -115,6 +116,16 @@ export function getSyncSecret() {
     }
 
     return env.SYNC_SECRET;
+}
+
+export function getIntakeServerUrl() {
+    return getEnv().INTAKE_SERVER_URL;
+}
+
+// When set, the cron enqueues per-account jobs to the intake server instead of
+// running them inline; lets one cron tick fan out to the worker pool at scale.
+export function isQueueEnabled() {
+    return Boolean(getEnv().INTAKE_SERVER_URL);
 }
 
 export function getRazorpayConfig() {

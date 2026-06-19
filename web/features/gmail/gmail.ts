@@ -107,11 +107,15 @@ function getWindowStart(
     return new Date(windowEnd.getTime() - DEFAULT_WINDOW_SECONDS * 1000);
 }
 
+// Triage only inbox mail; the user's own sent mail lives in Sent, never the
+// inbox, so this stops the agent drafting replies to the user's own messages.
+const INBOUND_ONLY_FILTER = "in:inbox";
+
 function buildTimeWindowQuery(windowStart: Date, windowEnd: Date) {
     const afterUnix = toUnixSeconds(windowStart);
     const beforeUnix = Math.max(afterUnix + 1, toUnixSeconds(windowEnd));
 
-    return `after:${afterUnix} before:${beforeUnix}`;
+    return `after:${afterUnix} before:${beforeUnix} ${INBOUND_ONLY_FILTER}`;
 }
 
 function toUnixSeconds(value: Date) {

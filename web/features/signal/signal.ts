@@ -7,7 +7,8 @@ const SIGNAL_URGENT_MESSAGE_TITLE = "URGENT";
 const SIGNAL_DRAFT_MESSAGE_TITLE = "Draft ready";
 const SIGNAL_SEND_PATH = "v2/send";
 const SIGNAL_QR_CODE_LINK_PATH = "v1/qrcodelink";
-const SIGNAL_REQUEST_TIMEOUT_MS = 10_000;
+// signal-cli can wait on its config lock while receive polling is active.
+const SIGNAL_REQUEST_TIMEOUT_MS = 30_000;
 
 const signalMessageSchema = z.object({
     summary: z.string().trim().min(1),
@@ -46,7 +47,7 @@ type SignalNumbers = {
 
 type DraftReadyInput = {
     subject: string;
-    preview: string;
+    body: string;
     refCode: string;
 };
 
@@ -75,11 +76,12 @@ function buildSignalMessage(
 function buildDraftReadyMessage(input: DraftReadyInput) {
     return [
         `${SIGNAL_DRAFT_MESSAGE_TITLE} for: ${input.subject || "(No subject)"}`,
-        `Preview: ${input.preview}`,
+        "",
+        input.body,
         "",
         `Reply "${input.refCode} send" to send`,
         `Reply "${input.refCode} no" to discard`,
-        `Reply "${input.refCode} [edit instructions]" to revise`,
+        `Reply "${input.refCode} make it shorter" (or any edit) to revise`,
     ].join("\n");
 }
 

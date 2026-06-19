@@ -12,6 +12,7 @@ import {
   type RecordedDecision,
 } from "@/features/agent/tools";
 import { summariseAndNotify } from "@/features/agent/tools/notify";
+import { markEmailHandledIfAbsent, markEmailNotified } from "@/db/queries";
 import {
   createUsageCollector,
   type TokenUsage,
@@ -23,6 +24,9 @@ const EMAIL_PROCESS_DELAY_MS = 500;
 // One-shot triage: force a single tool call, no follow-up model turn.
 const TRIAGE_MAX_STEPS = 1;
 const DEFAULT_USER_LABEL = "the user";
+// These tools persist their own processed_emails status (with snooze timer or
+// draft id); the rest are marked "notified" so they are not re-triaged.
+const SELF_PERSISTING_DECISIONS = new Set(["archive", "snooze", "draft_reply"]);
 
 export async function processEmails(
   account: ResolvedAccount,
@@ -50,6 +54,7 @@ export async function processEmails(
       email,
       collector,
     );
+    await recordHandled(account.userId, email.messageId, decision);
     decisions.push(decision);
 
     if (index < emails.length - 1) {
@@ -172,6 +177,41 @@ async function fallbackToSummary(
     toolCalls: { name: "summarizeAndNotify", args: {}, fallback: true },
     notified,
   };
+}
+
+// Marks an email handled unless its tool already wrote a processed_emails row.
+// A self-persisting tool only writes that row on success, so if it FAILED we
+// still record the email here — otherwise it stays unrecorded and the next run
+// re-triages it, re-sending its summary/notification (duplicate mail). The
+// failure backstop is non-clobbering so it can't overwrite a row the tool did
+// manage to write (e.g. a draft that was saved but whose Signal send failed).
+async function recordHandled(userId: string, messageId: string, decision: EmailDecision) {
+  const selfPersisting = SELF_PERSISTING_DECISIONS.has(decision.decision);
+
+  if (selfPersisting && !toolDidFail(decision)) {
+    return;
+  }
+
+  try {
+    if (selfPersisting) {
+      await markEmailHandledIfAbsent(userId, messageId);
+    } else {
+      await markEmailNotified(userId, messageId);
+    }
+  } catch (error) {
+    console.error(
+      `[AGENT] Failed to mark email handled for userId: ${userId}, message: ${messageId}`,
+    );
+    console.error(error);
+  }
+}
+
+// Tools flag a failed run via toolCall.args.failed; on failure they skip their
+// own processed_emails write, so the email needs the "notified" backstop.
+function toolDidFail(decision: EmailDecision): boolean {
+  const args = (decision.toolCalls as { args?: { failed?: unknown } } | null)?.args;
+
+  return args?.failed === true;
 }
 
 function delay(durationMs: number) {

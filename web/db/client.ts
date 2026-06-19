@@ -1,37 +1,28 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import { getDatabaseUrl } from "@/config/env";
 import * as schema from "@/db/schema";
 
-const MAX_DATABASE_CONNECTIONS = 10;
-const DATABASE_IDLE_TIMEOUT_SECONDS = 20;
-const DATABASE_CONNECT_TIMEOUT_SECONDS = 10;
-
-let client: postgres.Sql | null = null;
 let database: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
-function createClient() {
+function createDatabase() {
   const databaseUrl = getDatabaseUrl();
 
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is not configured.");
   }
 
-  return postgres(databaseUrl, {
-    max: MAX_DATABASE_CONNECTIONS,
-    idle_timeout: DATABASE_IDLE_TIMEOUT_SECONDS,
-    connect_timeout: DATABASE_CONNECT_TIMEOUT_SECONDS,
-    prepare: false,
-  });
+  // Neon's HTTP driver is stateless (one fetch per query) so there are no
+  // long-lived TCP sockets to go stale between serverless invocations and no
+  // cold-connect timeouts when Neon's compute wakes from idle.
+  const sql = neon(databaseUrl);
+
+  return drizzle(sql, { schema });
 }
 
 export function getDb() {
-  if (!client) {
-    client = createClient();
-  }
-
   if (!database) {
-    database = drizzle(client, { schema });
+    database = createDatabase();
   }
 
   return database;

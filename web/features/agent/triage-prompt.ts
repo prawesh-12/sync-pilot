@@ -23,6 +23,10 @@ export function buildTriagePrompt(
     "- draftReply: write a reply and save it to Gmail Drafts for the user to confirm; it is never sent automatically",
     "",
     "For draftReply, write the full reply text yourself in the body argument.",
+    'End every drafted reply with "Best regards," on its own line, then the' +
+      " user's own name. Infer that name from the user's email address above" +
+      " (the part before the @, formatted as a proper name); never use a" +
+      " placeholder or the name of whoever sent the incoming email.",
     "Always include a one-sentence reason.",
     "When unsure between ignore and summarizeAndNotify — pick summarizeAndNotify.",
   ];

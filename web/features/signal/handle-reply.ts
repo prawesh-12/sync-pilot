@@ -22,7 +22,8 @@ import {
 } from "@/db/queries";
 import type { GmailActionAccount } from "@/features/gmail/gmail";
 
-const DRAFT_PREVIEW_MAX_CHARACTERS = 100;
+// Caps the draft shown on Signal; high enough to show a full reply in one message.
+const DRAFT_BODY_MAX_CHARACTERS = 2000;
 const FAILURE_NOTICE =
   "Something went wrong handling that reply. Please try again.";
 const FREEFORM_NOTICE =
@@ -46,6 +47,7 @@ export async function handleSignalReply(
   message: string,
 ): Promise<void> {
   const parsed = await parseReply({ message, userId });
+  console.log(`[SIGNAL] Parsed reply as: ${parsed.kind}`);
 
   try {
     await dispatchReply(userId, parsed);
@@ -53,6 +55,7 @@ export async function handleSignalReply(
     console.error(`[SIGNAL] Failed to handle reply for userId: ${userId}`);
     console.error(error);
     await sendSignalNotice(userId, FAILURE_NOTICE);
+    throw error;
   }
 }
 
@@ -84,9 +87,13 @@ async function confirmDraftSend(
   pending: PendingAction,
 ): Promise<void> {
   const payload = draftPayloadSchema.parse(pending.payload);
+  console.log(
+    `[SIGNAL] Sending Gmail draft for refCode: ${pending.refCode}, draftId: ${payload.draftId}`,
+  );
   await sendDraftReply(accountFor(userId, payload), payload.draftId);
   await resolvePendingAction(pending.id, "confirmed");
   await sendSignalNotice(userId, `Sent your reply for: ${payload.subject}`);
+  console.log(`[SIGNAL] Confirmed draft send for refCode: ${pending.refCode}`);
 }
 
 async function discardDraft(
@@ -132,6 +139,29 @@ async function reviseDraft(
     original: payload.body,
     instructions,
   });
+
+  // Revision yielded nothing usable: keep the existing draft untouched rather
+  // than deleting it and leaving the user with no draft at all.
+  if (!newBody) {
+    await sendSignalNotice(
+      userId,
+      `Couldn't revise the draft for: ${payload.subject}. The original draft is still saved — try rephrasing your edit.`,
+    );
+    return;
+  }
+
+  // Vague instructions (e.g. "just wait I'll share later") leave the model with
+  // nothing concrete to change, so it echoes the draft back. Re-sending an
+  // identical draft as if the edit applied is confusing — flag the no-op and
+  // tell the user how to make their instruction actionable.
+  if (isSameBody(newBody, payload.body)) {
+    await sendSignalNotice(
+      userId,
+      `That edit didn't change the draft for: ${payload.subject}. Try a specific instruction, e.g. "make it shorter", "sound more formal", or "say I'll share my plans on Friday".`,
+    );
+    return;
+  }
+
   await deleteDraftReply(account, payload.draftId);
   const newDraftId = await createDraftReply(account, {
     threadId: payload.threadId,
@@ -147,11 +177,19 @@ async function reviseDraft(
   await sendDraftReadyMessage(
     {
       subject: payload.subject,
-      preview: newBody.slice(0, DRAFT_PREVIEW_MAX_CHARACTERS),
+      body: newBody.slice(0, DRAFT_BODY_MAX_CHARACTERS),
       refCode: pending.refCode,
     },
     userId,
   );
+}
+
+// True when the revised body is effectively the original (model made no real
+// edit). Compared on collapsed whitespace so cosmetic differences don't count.
+function isSameBody(a: string, b: string): boolean {
+  const normalize = (value: string) => value.replace(/\s+/g, " ").trim();
+
+  return normalize(a) === normalize(b);
 }
 
 async function sendUsageHint(userId: string, refCode: string): Promise<void> {
@@ -160,7 +198,7 @@ async function sendUsageHint(userId: string, refCode: string): Promise<void> {
     [
       `Reply "${refCode} send" to send`,
       `Reply "${refCode} no" to discard`,
-      `Reply "${refCode} [edit instructions]" to revise`,
+      `Reply "${refCode} make it shorter" (or any edit) to revise`,
     ].join("\n"),
   );
 }

@@ -2,10 +2,16 @@ import { tool } from "ai";
 import { z } from "zod";
 import { createDraftReply } from "@/features/gmail/gmail-drafts";
 import { sendDraftReadyMessage } from "@/features/signal/signal";
-import { markEmailDrafted, savePendingAction } from "@/db/queries";
+import { summariseAndNotify } from "./notify";
+import {
+  getPendingActionByMessageId,
+  markEmailDrafted,
+  savePendingAction,
+} from "@/db/queries";
 import type { TriageToolContext } from "./types";
 
-const DRAFT_PREVIEW_MAX_CHARACTERS = 100;
+// Caps the draft shown on Signal; high enough to show a full reply in one message.
+const DRAFT_BODY_MAX_CHARACTERS = 2000;
 
 // Writes a reply, saves it to Gmail Drafts, and asks the user to confirm on
 // Signal with a ref code. Nothing is ever sent automatically.
@@ -45,6 +51,25 @@ async function draftAndQueue(
   account: { userId: string; connectedAccountId: string },
   body: string,
 ): Promise<boolean> {
+  // Skip if this email already has a draft awaiting confirmation; re-drafting
+  // would create a duplicate Gmail draft and a second ref code.
+  const existing = await getPendingActionByMessageId(
+    ctx.userId,
+    ctx.email.messageId,
+    "draft_reply",
+  );
+
+  if (existing) {
+    console.log(
+      `[AGENT] Draft already pending for message: ${ctx.email.messageId}, refCode: ${existing.refCode}; skipping.`,
+    );
+
+    return false;
+  }
+
+  // Summary goes out first so the user has the email's context before the draft.
+  await notifyEmailSummary(ctx);
+
   try {
     const draftId = await createDraftReply(account, {
       threadId: ctx.email.threadId,
@@ -67,6 +92,9 @@ async function draftAndQueue(
         subject: ctx.email.subject,
       },
     });
+    console.log(
+      `[AGENT] Draft pending confirmation saved for message: ${ctx.email.messageId}, refCode: ${pending?.refCode ?? "missing"}`,
+    );
 
     return notifyDraftReady(ctx, body, pending?.refCode);
   } catch (error) {
@@ -77,6 +105,12 @@ async function draftAndQueue(
 
     return false;
   }
+}
+
+// Sends the email summary and reports its token usage for accounting.
+async function notifyEmailSummary(ctx: TriageToolContext): Promise<void> {
+  const { usage } = await summariseAndNotify(ctx.email, ctx.userId);
+  ctx.recordUsage(usage);
 }
 
 async function notifyDraftReady(
@@ -91,7 +125,7 @@ async function notifyDraftReady(
   const result = await sendDraftReadyMessage(
     {
       subject: ctx.email.subject,
-      preview: body.slice(0, DRAFT_PREVIEW_MAX_CHARACTERS),
+      body: body.slice(0, DRAFT_BODY_MAX_CHARACTERS),
       refCode,
     },
     ctx.userId,

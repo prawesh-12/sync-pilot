@@ -3,18 +3,36 @@ import {
   fetchEmailsInTimeWindow,
   type GmailEmail,
 } from "@/features/gmail/gmail";
-import { getDueSnoozedEmails, markEmailActive } from "@/db/queries";
+import {
+  getDueSnoozedEmails,
+  getHandledMessageIds,
+  markEmailActive,
+} from "@/db/queries";
 import type { ResolvedAccount } from "./types";
 
-// Due snoozed emails plus the fresh time-window batch, de-duplicated.
+// Due snoozed emails plus the fresh, not-yet-handled time-window batch.
 export async function collectEmails(
   account: ResolvedAccount,
   windowEnd: Date,
 ): Promise<GmailEmail[]> {
   const resurfaced = await collectSnoozedEmails(account, windowEnd);
   const fresh = await fetchEmailsInTimeWindow(account, windowEnd);
+  const unhandled = await dropHandledEmails(account.userId, fresh);
 
-  return dedupeByMessageId([...resurfaced, ...fresh]);
+  return dedupeByMessageId([...resurfaced, ...unhandled]);
+}
+
+// Skip emails already triaged in a prior run so each one is handled once.
+async function dropHandledEmails(
+  userId: string,
+  emails: GmailEmail[],
+): Promise<GmailEmail[]> {
+  const handled = await getHandledMessageIds(
+    userId,
+    emails.map((email) => email.messageId),
+  );
+
+  return emails.filter((email) => !handled.has(email.messageId));
 }
 
 async function collectSnoozedEmails(

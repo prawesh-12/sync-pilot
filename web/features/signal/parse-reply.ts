@@ -29,12 +29,14 @@ export async function parseReply(input: ParseReplyInput): Promise<ParsedReply> {
   const refCode = extractRefCode(text);
 
   if (!refCode) {
+    console.log("[SIGNAL] Reply did not start with a valid ref code.");
     return { kind: "freeform", text };
   }
 
   const pending = await getPendingActionByRefCode(input.userId, refCode);
 
   if (!pending) {
+    console.log(`[SIGNAL] No pending action found for refCode: ${refCode}`);
     return { kind: "freeform", text };
   }
 

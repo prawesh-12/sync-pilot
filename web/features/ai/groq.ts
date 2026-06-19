@@ -1,5 +1,10 @@
 import { createGroq } from "@ai-sdk/groq";
 import { generateText } from "ai";
+
+// The SDK doesn't re-export its ProviderOptions type; derive it from the call.
+type ProviderOptions = NonNullable<
+  Parameters<typeof generateText>[0]["providerOptions"]
+>;
 import { getGroqConfig, isGroqConfigured } from "@/config/env";
 
 type TextCompletionParams = {
@@ -7,6 +12,7 @@ type TextCompletionParams = {
   prompt: string;
   maxOutputTokens?: number;
   temperature?: number;
+  providerOptions?: ProviderOptions;
 };
 
 type TextCompletionResult = {
@@ -37,6 +43,7 @@ export async function createTextCompletion({
   prompt,
   maxOutputTokens,
   temperature,
+  providerOptions,
 }: TextCompletionParams): Promise<TextCompletionResult> {
   if (!isGroqConfigured()) {
     throw new Error("GROQ_API_KEY is not configured.");
@@ -52,6 +59,7 @@ export async function createTextCompletion({
     prompt,
     temperature: temperature ?? 0.2,
     maxOutputTokens: maxOutputTokens ?? 500,
+    providerOptions,
   });
 
   return {

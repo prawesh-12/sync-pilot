@@ -12,12 +12,12 @@ import {
 export const PLAN_VALUES = ["free", "pro"] as const;
 export const PROVIDER_VALUES = ["composio"] as const;
 export const RUN_STATUS_VALUES = ["success", "error"] as const;
-// "drafted" is unused for now but listed to keep the status column type stable.
 export const PROCESSED_EMAIL_STATUS_VALUES = [
     "active",
     "snoozed",
     "archived",
     "drafted",
+    "notified",
 ] as const;
 // Lists every action up front so the decision column type stays stable.
 export const DECISION_VALUES = [
