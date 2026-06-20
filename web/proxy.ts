@@ -12,6 +12,12 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/api\/webhooks/,
   // All cron routes authenticate via the cron secret in their own handlers.
   /^\/api\/cron(\/.*)?$/,
+  // Machine-to-machine routes called by the EC2 worker; they authenticate via
+  // the SYNC_SECRET (x-secret header) in their own handlers, so the session
+  // middleware must not redirect them to /sign-in. Keep /api/agent/run-job
+  // exact so the session-protected /api/agent/run stays behind auth.
+  /^\/api\/agent\/run-job\/?$/,
+  /^\/api\/internal(\/.*)?$/,
 ];
 
 function isPublicRoute(pathname: string) {
