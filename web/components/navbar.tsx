@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { ctaButtonClass, ctaButtonTheme } from "@/components/cta-button-class";
 import { PendingLink } from "@/components/pending-link";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 type NavbarProps = {
@@ -16,6 +18,7 @@ export function Navbar({ className }: NavbarProps) {
     const pathname = usePathname();
     const { status } = useSession();
     const isSignedIn = status === "authenticated";
+    const [isSigningOut, setIsSigningOut] = useState(false);
 
     return (
         <header
@@ -53,10 +56,25 @@ export function Navbar({ className }: NavbarProps) {
                             ) : null}
                             <button
                                 type="button"
-                                onClick={() => signOut({ redirectTo: "/" })}
-                                className={cn(ctaButtonTheme, "px-4 py-1.5 text-sm")}
+                                disabled={isSigningOut}
+                                aria-busy={isSigningOut}
+                                onClick={() => {
+                                    setIsSigningOut(true);
+                                    void signOut({ redirectTo: "/" });
+                                }}
+                                className={cn(
+                                    ctaButtonTheme,
+                                    "inline-flex items-center gap-2 px-4 py-1.5 text-sm disabled:opacity-70",
+                                )}
                             >
-                                Sign out
+                                {isSigningOut ? (
+                                    <>
+                                        <Spinner className="size-4" />
+                                        Signing out
+                                    </>
+                                ) : (
+                                    "Sign out"
+                                )}
                             </button>
                         </>
                     )}

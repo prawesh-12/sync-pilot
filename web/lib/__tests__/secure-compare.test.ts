@@ -19,8 +19,8 @@ describe("secureEquals", () => {
     expect(secureEquals("secret", "")).toBe(false);
   });
 
-  it("handles unicode without throwing", () => {
-    expect(secureEquals("cle", "cle")).toBe(true);
-    expect(secureEquals("cle", "cle")).toBe(false);
+  it("handles multi-byte/unicode input without throwing", () => {
+    expect(secureEquals("café-\u{1F510}", "café-\u{1F510}")).toBe(true);
+    expect(secureEquals("café-\u{1F510}", "latte-\u{1F511}")).toBe(false);
   });
 });

@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
 import { SignalQrModal } from "@/components/dashboard/signal-qr-modal";
 
 export type SignalIntegrationCardProps = {
@@ -96,9 +96,9 @@ export function SignalIntegrationCard({
 
                 {isSignalConnected ? (
                     <form action={disconnectAction} className="w-full sm:w-auto">
-                        <Button type="submit" variant="destructive" className="w-full sm:w-auto">
+                        <PendingSubmitButton variant="destructive" className="w-full sm:w-auto">
                             Disconnect Signal
-                        </Button>
+                        </PendingSubmitButton>
                     </form>
                 ) : null}
             </CardContent>

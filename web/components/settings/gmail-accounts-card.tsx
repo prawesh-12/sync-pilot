@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PendingSubmitButton } from "@/components/ui/pending-submit-button";
+import { AddGmailForm } from "@/components/settings/add-gmail-form";
 import { type getGmailAccounts } from "@/db/queries";
 
 type GmailAccount = Awaited<ReturnType<typeof getGmailAccounts>>[number];
@@ -85,44 +85,18 @@ function GmailAccountRow({
             name="nextActive"
             value={account.isActive ? "false" : "true"}
           />
-          <Button type="submit" variant="outline" size="sm">
+          <PendingSubmitButton variant="outline" size="sm">
             {account.isActive ? "Disable" : "Enable"}
-          </Button>
+          </PendingSubmitButton>
         </form>
 
         <form action={removeAction}>
           <input type="hidden" name="integrationId" value={account.id} />
-          <Button type="submit" variant="destructive" size="sm">
+          <PendingSubmitButton variant="destructive" size="sm">
             Remove
-          </Button>
+          </PendingSubmitButton>
         </form>
       </div>
     </li>
-  );
-}
-
-function AddGmailForm({ returnTo }: { returnTo: string }) {
-  return (
-    <form
-      method="get"
-      action="/api/auth/composio"
-      className="flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:items-end"
-    >
-      <input type="hidden" name="returnTo" value={returnTo} />
-      <div className="flex-1 space-y-1">
-        <label htmlFor="gmailLabel" className="text-xs text-muted-foreground">
-          Label (optional)
-        </label>
-        <Input
-          id="gmailLabel"
-          name="label"
-          placeholder="Work Gmail"
-          maxLength={40}
-        />
-      </div>
-      <Button type="submit" className="w-full sm:w-auto">
-        Add Gmail account
-      </Button>
-    </form>
   );
 }

@@ -12,5 +12,7 @@ export default defineConfig({
     environment: "node",
     include: ["**/*.test.ts"],
     exclude: ["node_modules", ".next"],
+    // Silence app pino logs during tests so the output shows only test results.
+    env: { LOG_LEVEL: "silent" },
   },
 });
