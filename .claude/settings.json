@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"typecheck exit: $?\")",
+      "Bash(pnpm add *)",
+      "Bash(echo \"exit $?\")",
+      "Bash(echo \"tc exit $?\")",
+      "Bash(echo \"web tc exit $?\")",
+      "Bash(echo \"server tc exit $?\")",
+      "Bash(pnpm run *)",
+      "Bash(grep -vE \"WARN|^\\\\\\\\$|onlyBuilt\")"
+    ]
+  }
+}
