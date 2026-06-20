@@ -2,9 +2,11 @@
 # Default command runs the Express job-intake API. Run the BullMQ worker from
 # this same image by overriding the command with: pnpm worker
 # Redis runs as a separate local container and is reached via REDIS_HOST.
-FROM node:20-slim
+FROM node:22-slim
 
-# Enable pnpm via Corepack, which ships with Node 20.
+# Enable pnpm via Corepack. The pnpm version is pinned via the "packageManager"
+# field in package.json; pnpm 11.x requires Node >= 22.13, so the base image
+# must stay on Node 22+ (Node 20 lacks the node:sqlite builtin pnpm 11 uses).
 RUN corepack enable
 
 WORKDIR /app

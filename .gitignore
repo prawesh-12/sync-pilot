@@ -45,6 +45,9 @@ next-env.d.ts
 extras
 .agents/
 .claude/
+skills-lock.json
+
+README.md
 
 # signal
 server/signal-cli-config/signal-cli-config/data
