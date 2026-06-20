@@ -1,86 +1,95 @@
-# SyncPilot - Ai Agent
+# SyncPilot — AI Agent
 
-SyncPilot is an Ai Agent for email that reads new Gmail messages, summarizes them,
-and sends the summary to Signal messaging application.
+SyncPilot is an AI agent for your inbox. It reads every new Gmail message,
+**triages what matters**, takes action (summarize, archive, label, escalate,
+snooze, or **draft a reply**), and briefs you in the **Signal** messaging app.
+You stay in control: reply on Signal to **approve, send, or revise** a draft.
 
 In short:
 
-1. User connects Gmail.
-2. User links Signal and saves sender/recipient numbers.
-3. SyncPilot fetches new emails, summarizes them with AI, and delivers results to Signal.
+1. Connect one or more Gmail accounts.
+2. Link Signal by scanning a QR code, and save your sender/recipient numbers.
+3. On each cron tick, SyncPilot reads new email, the agent decides what to do
+   with each one, and the results — summaries and drafts — land in Signal.
+4. Reply on Signal with a ref code to confirm, send, or revise a drafted reply.
 
 ---
+
 # Architecture
+SyncPilot runs as two cooperating pieces:
 
-<img src="./public/previews/sync_pilot_architecture.excalidraw.png" alt="SyncPilot Architecture"/>
+- **Web app (`web/`, Next.js on Vercel)** — UI, auth, integrations, the agent
+  logic (Gmail via Composio, triage via Groq, Signal send/receive), and the
+  cron endpoints.
+- **Intake server + worker (`server/`, Express + BullMQ + Redis on EC2)** —
+  optional scale-out path. The `fetch-emails` cron enqueues one job per Gmail
+  account to this worker pool, and each worker calls back into the web app to
+  run the agent for that account. With no intake server configured, the cron
+  runs accounts inline (fine for local/single-account use).
 
----
-
-# Previews
-
-<img src="./public/previews/landing_page.png" alt="Landing Page"/>
-
-<img src="./public/previews/Dashboard_page.png" alt="Dashboard Page"/>
-
-<img src="./public/previews/connection_setting_pop_up.png" alt="Connection Setting Pop Up"/>
-
-<img style="width:200px" src="./public/previews/mobile_signal_app_preview.jpeg" alt="Signal App preview"/>
-
----
-
-## Core Workflow
-
-1. Authenticate with Clerk.
-2. Connect Gmail using Google OAuth.
-3. Connect Signal by scanning a QR code (Linked Devices in Signal).
-4. Save Signal sender and recipient numbers (E.164 format, for example +914155550123).
-5. Trigger the cron endpoint (or schedule it externally). Cron time is like 9:00 AM to 9:15AM all the received email will be one by summarised and sent to the signal application next from 9:15AM to 9:30AM. every 15 minutes.
-6. New Gmail emails are summarized with Groq and sent to Signal Application.
+Signal connectivity is provided by a self-hosted
+[signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api)
+container running in **native** mode.
 
 ---
 
-## Implementation
+## What the agent does
 
-- Next.js App Router UI with protected dashboard
-- Clerk authentication (sign-in and sign-up)
-- Gmail read access via Google OAuth
-- Signal integration via signal-cli-rest-api
-- AI summarization with Groq model openai/gpt-oss-120b
-- Per-user integration state and run history stored in PostgreSQL (Drizzle)
-- Authenticated manual agent route for structured operations briefs
+On each run, every new email is read and given **one decision**:
+
+| Decision | Meaning |
+| --- | --- |
+| `summarize_notify` | Condense the email and send a brief to Signal |
+| `draft_reply` | Draft a reply and send it to Signal for approval |
+| `escalate` | Flag as urgent / needs attention |
+| `apply_label` | Apply a Gmail label |
+| `archive` | Archive low-value mail |
+| `snooze` | Defer for later |
+| `ignore` | No action (noise) |
+
+Drafted replies are not sent automatically. SyncPilot sends the draft to Signal
+with a short **ref code**; you reply on Signal to **confirm**, **send**, or
+**revise** it. A second cron (`poll-signal-replies`) drains those replies and
+applies your decision.
 
 ---
 
 ## Tech Stack
 
-- Next.js 16 + React 19
-- Clerk - Authentication
-- Drizzle ORM + PostgreSQL
-- Google APIs (Gmail)
-- Vercel AI SDK + Groq
-- [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api)
-- for cron jobs https://cron-job.org/en/ used.
+- **Next.js 16 + React 19** (App Router) — web app
+- **Auth.js (NextAuth v5)** — Google sign-in
+- **Composio** — Gmail connection and actions (`@composio/core`, `@composio/vercel`)
+- **Vercel AI SDK + Groq** — triage/summarization (`@ai-sdk/groq`, model `openai/gpt-oss-120b`)
+- **Drizzle ORM + PostgreSQL** (Neon in production) — integrations, runs, decisions, billing
+- **signal-cli-rest-api** — Signal send/receive (Docker)
+- **Express + BullMQ + Redis** (`server/`) — EC2 intake server and worker pool
+- **Razorpay** — subscription billing
+- **cron-job.org** — external scheduler for the cron endpoints
 
 ---
 
 ## Project Setup (Locally)
 
+> The web app lives in `web/`; the optional worker lives in `server/`. There is
+> no root workspace — run `pnpm` inside the package you're working on.
+
 ### 1) Install prerequisites
 
-- Bun
-- PostgreSQL
-- Docker + Docker Compose
-- A Clerk account
-- A Google Cloud account
+- Node.js 20 LTS or newer (the `server/` worker targets Node 22)
+- pnpm (run `corepack enable`, or see https://pnpm.io/installation)
+- PostgreSQL (or a Neon connection string)
+- Docker + Docker Compose (for signal-cli)
+- A Google Cloud account (for Google sign-in)
+- A [Composio](https://composio.dev) account (for Gmail)
 - A Groq API key
 - Signal app on your phone (for QR linking)
 
-### 2) Clone project and install dependencies
+### 2) Clone and install
 
 ```bash
 git clone https://github.com/prawesh-12/sync-pilot.git
-cd sync-pilot
-bun install
+cd sync-pilot/web
+pnpm install
 ```
 
 ### 3) Create local environment file
@@ -89,85 +98,65 @@ bun install
 cp .env.example .env.local
 ```
 
-Open .env.local and fill every required value.
+Open `.env.local` and fill every required value. The sections below cover each.
 
-### 4) Setup PostgreSQL and DATABASE_URL
+### 4) PostgreSQL and `DATABASE_URL`
 
-Start PostgreSQL service, then create a database.
-
-Example (Linux):
+Start PostgreSQL and create a database, then set `DATABASE_URL`:
 
 ```bash
 sudo service postgresql start
 sudo -u postgres createdb syncpilot
 ```
 
-Set DATABASE_URL in .env.local, for example:
-
 ```env
-DATABASE_URL=postgresql://postgres:postgres@username:password/syncpilot
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/syncpilot
 ```
 
-Use your real postgres username/password if different.
+### 5) Auth.js (Google sign-in)
 
-### 5) Setup Clerk keys
-
-1. Create a Clerk application at https://clerk.com.
-2. Copy keys from Clerk dashboard.
-3. Set these in .env.local:
-
-```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-CLERK_SECRET_KEY=...
-```
-
-### 6) Setup Google OAuth for Gmail API
-
-In Google Cloud Console:
-
-1. Create/select a project.
-2. Enable Gmail API.
-3. Configure OAuth consent screen.
-4. Add [test users](https://console.cloud.google.com/auth/audience).
-   Add the email addresses that are allowed to test Gmail summary access.
-5. Go to [/auth/clients](https://console.cloud.google.com/auth/clients) and create an OAuth Client ID of type Web application.
-6. Set these values exactly in the OAuth client:
-
-```text
-Authorised JavaScript origins:
-http://localhost:3000
-
-Authorised redirect URIs:
-http://localhost:3000/api/auth/google/callback
-```
-
-Set these in .env.local:
-
-```env
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
-```
-
-7. Save the OAuth client and use the copied credentials.
-
-Important: GOOGLE_REDIRECT_URI must exactly match the redirect URI configured above.
-
-### 7) Set ENCRYPTION_KEY correctly
-
-Generate a 64 character hex key using below cmd or use any website to generate :
+Generate an auth secret and create a Google OAuth client for **login**:
 
 ```bash
-openssl rand -hex 32
+openssl rand -base64 33   # -> AUTH_SECRET
 ```
 
-Set it in .env.local:
+In Google Cloud Console, create an OAuth Client ID (Web application) with:
+
+```text
+Authorised redirect URI:
+http://localhost:3000/api/auth/callback/google
+```
+
+```env
+AUTH_SECRET=<generated>
+AUTH_GOOGLE_ID=<google-oauth-client-id>
+AUTH_GOOGLE_SECRET=<google-oauth-client-secret>
+```
+
+### 6) Composio (Gmail)
+
+Gmail access is handled by Composio, not by a direct Google token.
+
+1. Create a Composio account and copy your API key.
+2. In the Composio dashboard, create a **Gmail** auth config and copy its ID.
+
+```env
+COMPOSIO_API_KEY=<composio-api-key>
+COMPOSIO_GMAIL_AUTH_CONFIG_ID=<gmail-auth-config-id>
+```
+
+### 7) Encryption key
+
+```bash
+openssl rand -hex 32   # 64 hex chars
+```
 
 ```env
 ENCRYPTION_KEY=<paste-generated-hex>
 ```
 
-### 8) Set Groq and Cron secrets
+### 8) Groq and cron secrets
 
 ```env
 GROQ_API_KEY=...
@@ -176,121 +165,152 @@ GROQ_MODEL=openai/gpt-oss-120b
 CRON_SECRET=<any-strong-random-string>
 ```
 
-### 9) Start Signal REST service (docker)
-
-From project root:
+### 9) Signal REST service (Docker)
 
 ```bash
-cd signal-cli-config
+cd ../server/signal-cli-config
 docker compose up -d
-cd ..
+cd ../../web
 ```
-
-Set in .env.local:
 
 ```env
 SIGNAL_CLI_REST_URL=http://localhost:8080
+# Leave SIGNAL_AUTH_TOKEN empty for local; set it in production so the proxy in
+# front of signal-cli rejects requests without a matching X-Signal-Auth header.
+SIGNAL_AUTH_TOKEN=
 ```
 
 ### 10) Run database migrations
 
 ```bash
-bun run db:migrate
+pnpm db:migrate
 ```
+
+> Migrations are applied manually — there is **no auto-migrate on deploy**.
+> After generating new migrations, run `pnpm db:migrate` against each
+> environment (including production) or queries will fail on missing tables.
 
 ### 11) Start the app
 
 ```bash
-bun run dev
+pnpm dev
 ```
 
-### Open http://localhost:3000
+Open http://localhost:3000
 
 ### 12) First-time in-app setup
 
-1. Sign in.
-2. Open Dashboard -> Connection Setting.
-3. Click Connect Google Account and complete OAuth.
-4. Click Generate Signal QR.
-5. In Signal mobile app: Linked Devices -> scan QR.
-6. Save sender and recipient phone numbers in E.164 format (example: +911555501230).
+1. Sign in with Google.
+2. Open **Dashboard → Connection Setting**.
+3. Click **Connect Gmail** and complete the Composio flow (repeat to add more
+   accounts).
+4. Click **Generate Signal QR**.
+5. In the Signal mobile app: **Linked Devices → scan QR**.
+6. Save sender and recipient phone numbers in E.164 format (e.g. `+919279581041`).
 
-### 13) Test cron endpoint manually
+### 13) Trigger the agent manually
 
 ```bash
 curl -X POST "http://localhost:3000/api/cron/fetch-emails" \
     -H "Authorization: Bearer <CRON_SECRET>"
 ```
 
-If setup is correct, you will get JSON with values like usersProcessed, successfulRuns, and failedRuns.
+With no `INTAKE_SERVER_URL` set, the run is inline and returns:
+
+```json
+{ "mode": "inline", "accountsProcessed": 1, "successfulRuns": 1, "failedRuns": 0, "runs": [ ... ] }
+```
+
+With an intake server configured it enqueues instead:
+
+```json
+{ "mode": "queued", "accountsQueued": 1 }
+```
 
 ### 14) Quick troubleshooting
 
-- 401 on cron route: CRON_SECRET mismatch in header.
-- Google callback error: redirect URI must match exactly.
-- Encryption errors: ENCRYPTION_KEY must be 64 hex characters.
-- No Signal messages: verify Signal QR link, sender/recipient numbers, and SIGNAL_CLI_REST_URL.
-- No emails summarized: verify Gmail connection exists for that signed-in user.
+- `401` on a cron route: `CRON_SECRET` mismatch in the `Authorization` header.
+- `500` on a cron/worker route: usually unapplied DB migrations (run `pnpm db:migrate`).
+- Gmail connect lands on a Composio page: expected — it's the hosted OAuth flow.
+- No Signal messages: verify the QR link, sender/recipient numbers, and `SIGNAL_CLI_REST_URL`.
+- No emails processed: confirm the signed-in user has both a Gmail account and Signal connected.
 
 ---
 
-## Connect Gmail and Signal
+## Cron jobs
 
-- Complete [12) First-time in-app setup](#12-first-time-in-app-setup).
+Both routes are protected by `Authorization: Bearer <CRON_SECRET>` and accept
+GET or POST. Schedule them externally (this project uses
+[cron-job.org](https://cron-job.org)).
 
-- After this, the user is ready to receive email summaries on Signal.
+| Route | Purpose | Suggested interval |
+| --- | --- | --- |
+| `/api/cron/fetch-emails` | Read new email → agent triage → summaries/drafts to Signal | every 5–15 min |
+| `/api/cron/poll-signal-replies` | Drain Signal replies and apply confirm/send/revise | every 1 min |
 
----
+For production scheduling on cron-job.org:
 
-## Trigger Email Processing
-
-1. [Run the cron route local](#13-test-cron-endpoint-manually).
-
-2. For production scheduling, this project uses cron-job.org:
-
-- Dashboard: https://console.cron-job.org/dashboard
-- URL: https://<your-domain>/api/cron/fetch-emails
+- URL: `https://<your-domain>/api/cron/<route>`
 - Method: POST
-- Header: Authorization: Bearer <CRON_SECRET>
-- Recommended interval: every 5-15 minutes
+- Header: `Authorization: Bearer <CRON_SECRET>`
 
-If you test from local development, expose your local app publicly first
-(for example via a tunnel) so cron-job.org can reach the endpoint.
+If testing from local dev, expose the app publicly (e.g. via a tunnel) so
+cron-job.org can reach the endpoints.
 
-The route processes users who have both Gmail and Signal connected, then
-returns summary stats like:
+---
 
-- usersProcessed
-- usersSkippedMissingSignal
-- successfulRuns
-- failedRuns
+## Scaling with the EC2 worker (optional)
+
+To fan out across many Gmail accounts, run the `server/` package (Express +
+BullMQ + Redis) on a host such as EC2:
+
+1. Set `SYNC_SECRET` (shared with the web app), `WEB_APP_URL`, and
+   `REDIS_HOST`/`REDIS_PORT` in `server/.env` (see `server/.env.example`).
+2. Bring up Redis + the worker (`server/docker-compose.yml`). When running in
+   Docker Compose, `REDIS_HOST` must be the Redis **service name** (e.g.
+   `redis`), not `localhost`.
+3. In the web app, set `INTAKE_SERVER_URL` to the server's base URL and
+   `SYNC_SECRET` to the same value.
+
+The `fetch-emails` cron then enqueues one job per account; each worker calls
+`POST /api/agent/run-job` to run the agent and reports lifecycle to
+`POST /api/internal/sync-jobs`.
 
 ---
 
 ## API Endpoints
 
-- POST /api/agent/run
-    - Protected route for manual agent tasks (operations copilot, triage, etc.)
-- GET /api/auth/google
-    - Starts Google OAuth flow
-- GET /api/auth/google/callback
-    - Completes OAuth and stores encrypted Gmail tokens
-- GET /api/signal/qr
-    - Returns QR image from signal-cli-rest-api for linking Signal
-- GET or POST /api/cron/fetch-emails
-    - Protected by Authorization: Bearer <CRON_SECRET>
-    - Runs Gmail fetch -> AI summarize -> Signal send pipeline
+**Cron (Bearer `CRON_SECRET`)**
+- `GET|POST /api/cron/fetch-emails` — read → triage → summaries/drafts to Signal
+- `GET|POST /api/cron/poll-signal-replies` — drain and apply Signal replies
+
+**Auth & integrations**
+- `GET|POST /api/auth/[...nextauth]` — Auth.js (Google sign-in)
+- `GET /api/auth/status` — current auth/integration status
+- `GET /api/auth/composio` — start the Gmail connect flow
+- `GET /api/auth/composio/callback` — finish Gmail connect and store the account
+- `GET /api/signal/qr` — QR image from signal-cli for linking Signal
+
+**Agent (machine-authenticated with `SYNC_SECRET` via `x-secret`)**
+- `POST /api/agent/run` — manual agent task (session-authenticated)
+- `POST /api/agent/run-job` — run the agent for one account (called by the worker)
+- `POST /api/internal/sync-jobs` — durable job-status sink (called by the worker)
+
+**Billing**
+- `POST /api/billing/subscribe` — create a Razorpay subscription
+- `POST /api/webhooks/razorpay` — Razorpay webhook (signature-verified)
 
 ---
 
 ## Notes
 
-- The cron pipeline sends summaries only for users with both integrations.
-- Gmail scope is read-only.
-- Signal numbers are saved per user from Settings.
-- Agent run history is stored and shown on Dashboard.
+- The agent runs only for users who have both Gmail and Signal connected.
+- Multiple Gmail accounts per user are supported; each is one job/run.
+- Drafted replies require explicit Signal confirmation before being sent.
+- Run history and per-email decisions are stored and shown on the Dashboard.
 
 ---
+
 ## License
 
 MIT — see [`LICENSE`](./LICENSE)

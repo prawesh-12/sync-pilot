@@ -33,22 +33,28 @@ export default function Home() {
             <div className="flex flex-1 flex-col justify-center gap-6 px-6 py-4 md:gap-7 md:px-12">
               <div className="mx-auto mt-8 flex w-full max-w-4xl flex-col items-center gap-5 text-center md:mt-10">
                 <p className="mx-auto flex w-fit items-center gap-1 rounded-full border border-[#A089E6]/30 bg-[#A089E6]/10 px-4 py-1 text-xs text-[#A089E6]">
-                  <Brain /> Powered by Groq LLM
+                  <Brain /> Agentic AI, powered by Groq
                 </p>
 
                 <h1 className="max-w-2xl text-3xl font-bold leading-tight text-white md:text-5xl">
-                  Your Inbox, Summarized
+                  Your Inbox, on Autopilot
                   <br />
-                  Delivered to{" "}
+                  Run from{" "}
                   <span className="relative inline-block">
-                    <Image
-                      src="/signal-app.svg"
-                      alt=""
-                      width={100}
-                      height={100}
-                      className="pointer-events-none absolute -top-3 -right-10 h-auto w-14 md:-top-7 md:-right-20 md:w-25"
+                    <span
                       aria-hidden="true"
-                    />
+                      className="pointer-events-none absolute -top-3 -right-9 h-12 w-12 md:-top-7 md:-right-18 md:h-22 md:w-22"
+                    >
+                      <span className="signal-ring absolute inset-0.5 rounded-full" />
+                      <span className="signal-ring signal-ring-delayed absolute inset-0.5 rounded-full" />
+                      <Image
+                        src="/signal-app.svg"
+                        alt=""
+                        width={100}
+                        height={100}
+                        className="signal-glyph relative h-full w-full"
+                      />
+                    </span>
                     <span className="bg-linear-to-r from-white to-[#A089E6] bg-clip-text text-transparent">
                       Signal
                     </span>
@@ -56,9 +62,10 @@ export default function Home() {
                 </h1>
 
                 <p className="max-w-lg text-sm leading-relaxed text-gray-400">
-                  SyncPilot connects your Gmail, reads every new email with AI,
-                  and sends you a clean summary directly in Signal. No noise,
-                  just signal.
+                  SyncPilot is an AI agent that reads every new email, triages
+                  what matters, and drafts your replies &mdash; then briefs you
+                  in Signal. Reply to approve, send, or revise. No noise, just
+                  signal.
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-3">
@@ -110,7 +117,8 @@ export default function Home() {
                   </div>
                   <h2 className="text-lg font-semibold text-white">Gmail Connected</h2>
                   <p className="text-sm text-gray-400">
-                    Monitors your inbox via Google OAuth. Real-time, zero friction.
+                    Securely connects via Google OAuth and watches every new
+                    email in real time.
                   </p>
                 </article>
 
@@ -141,9 +149,9 @@ export default function Home() {
                       />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-semibold text-white">AI Summarization</h2>
+                  <h2 className="text-lg font-semibold text-white">Agentic Triage</h2>
                   <p className="text-sm text-gray-400">
-                    Groq LLM condenses long emails into 2-line summaries instantly.
+                    A Groq-powered agent reads each email and acts, summarize, archive, label, escalate, or draft a reply.
                   </p>
                 </article>
 
@@ -170,9 +178,10 @@ export default function Home() {
                       />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-semibold text-white">Signal Delivery</h2>
+                  <h2 className="text-lg font-semibold text-white">Control from Signal</h2>
                   <p className="text-sm text-gray-400">
-                    Encrypted summaries land in Signal. Private, fast, no noise.
+                    Briefs and drafts land in Signal. Reply to confirm, send, or
+                    revise, you stay in the loop.
                   </p>
                 </article>
               </div>
