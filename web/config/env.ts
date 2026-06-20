@@ -18,6 +18,7 @@ const envSchema = z.object({
         .optional()
         .transform((value) => value || DEFAULT_GROQ_MODEL),
     SIGNAL_CLI_REST_URL: z.string().trim().optional().default(""),
+    SIGNAL_AUTH_TOKEN: z.string().trim().optional().default(""),
     SIGNAL_SENDER_NUMBER: z.string().trim().optional().default(""),
     SIGNAL_RECIPIENT_NUMBER: z.string().trim().optional().default(""),
     CRON_SECRET: z.string().trim().optional().default(""),
@@ -89,7 +90,21 @@ export function getSignalConfig() {
 
     return {
         restUrl: env.SIGNAL_CLI_REST_URL,
+        authToken: env.SIGNAL_AUTH_TOKEN,
     };
+}
+
+// Header name the proxy in front of signal-cli checks. signal-cli itself has no
+// auth, so when SIGNAL_AUTH_TOKEN is set the app sends this header and the
+// reverse proxy (Nginx on EC2) rejects any request missing/mismatching it.
+export const SIGNAL_AUTH_HEADER = "X-Signal-Auth";
+
+// Returns the Signal auth header when a token is configured, else nothing. Spread
+// into a request's headers: `{ ...getSignalAuthHeaders(), Accept: "..." }`.
+export function getSignalAuthHeaders(): Record<string, string> {
+    const token = getEnv().SIGNAL_AUTH_TOKEN;
+
+    return token ? { [SIGNAL_AUTH_HEADER]: token } : {};
 }
 
 export function isSignalConfigured() {

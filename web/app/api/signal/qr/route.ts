@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { buildSignalDeviceName, getSignalQrCodeLink } from "@/features/signal/signal";
 import { getSignalIntegration } from "@/db/queries";
+import { getSignalAuthHeaders } from "@/config/env";
 
 const SIGNAL_QR_TIMEOUT_MS = 15_000;
 
@@ -19,6 +20,7 @@ export async function GET() {
             signalIntegration?.deviceName || buildSignalDeviceName(userId);
         const endpoint = getSignalQrCodeLink(deviceName);
         const upstreamResponse = await fetch(endpoint, {
+            headers: getSignalAuthHeaders(),
             cache: "no-store",
             signal: AbortSignal.timeout(SIGNAL_QR_TIMEOUT_MS),
         });

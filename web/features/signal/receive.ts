@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { getSignalIntegration } from "@/db/queries";
-import { getSignalConfig, isSignalConfigured } from "@/config/env";
+import {
+  getSignalAuthHeaders,
+  getSignalConfig,
+  isSignalConfigured,
+} from "@/config/env";
 import { scopedLogger } from "@/lib/logger";
 
 const log = scopedLogger("SIGNAL");
@@ -109,7 +113,7 @@ async function fetchInboundMessages(integration: {
   const endpoint = getReceiveEndpoint(sender);
   const response = await fetch(endpoint, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", ...getSignalAuthHeaders() },
     cache: "no-store",
     signal: AbortSignal.timeout(SIGNAL_RECEIVE_TIMEOUT_MS),
   });
@@ -133,7 +137,7 @@ async function fetchInboundMessagesForSender(
   const endpoint = getReceiveEndpoint(senderNumber.trim());
   const response = await fetch(endpoint, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", ...getSignalAuthHeaders() },
     cache: "no-store",
     signal: AbortSignal.timeout(SIGNAL_RECEIVE_TIMEOUT_MS),
   });

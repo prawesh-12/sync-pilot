@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { getSignalIntegration } from "@/db/queries";
-import { getSignalConfig, isSignalConfigured } from "@/config/env";
+import {
+    getSignalAuthHeaders,
+    getSignalConfig,
+    isSignalConfigured,
+} from "@/config/env";
 import { scopedLogger } from "@/lib/logger";
 
 const log = scopedLogger("SIGNAL");
@@ -168,6 +172,7 @@ async function postSignalMessage(
         method: "POST",
         headers: {
             "Content-Type": "application/json",
+            ...getSignalAuthHeaders(),
         },
         body: JSON.stringify({
             number: numbers.sender,
