@@ -1,4 +1,7 @@
 import { getPendingActionByRefCode } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
+
+const log = scopedLogger("SIGNAL");
 
 const REF_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const REF_CODE_LENGTH = 4;
@@ -29,21 +32,21 @@ export async function parseReply(input: ParseReplyInput): Promise<ParsedReply> {
   const refCode = extractRefCode(text);
 
   if (!refCode) {
-    console.log("[SIGNAL] Reply did not start with a valid ref code.");
+    log.info("reply did not start with a valid ref code");
     return { kind: "freeform", text };
   }
 
   const pending = await getPendingActionByRefCode(input.userId, refCode);
 
   if (!pending) {
-    console.log(`[SIGNAL] No pending action found for refCode: ${refCode}`);
+    log.info({ refCode }, "no pending action found for ref code");
     return { kind: "freeform", text };
   }
 
   return classifyCommand(pending, stripRefCode(text));
 }
 
-function classifyCommand(
+export function classifyCommand(
   pending: PendingAction,
   command: string,
 ): ParsedReply {
@@ -64,7 +67,7 @@ function classifyCommand(
   return { kind: "draft_revise", pending, instructions: command.trim() };
 }
 
-function extractRefCode(text: string): string | null {
+export function extractRefCode(text: string): string | null {
   const candidate = text.split(/\s+/)[0]?.toUpperCase() ?? "";
 
   if (candidate.length !== REF_CODE_LENGTH) {
@@ -78,7 +81,7 @@ function extractRefCode(text: string): string | null {
   return isRefCode ? candidate : null;
 }
 
-function stripRefCode(text: string): string {
+export function stripRefCode(text: string): string {
   const firstSpace = text.search(/\s/);
 
   return firstSpace === -1 ? "" : text.slice(firstSpace + 1);

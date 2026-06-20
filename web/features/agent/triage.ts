@@ -1,6 +1,10 @@
 import { generateText, stepCountIs, type LanguageModel } from "ai";
 import { type GmailEmail } from "@/features/gmail/gmail";
-import { getGroqModel } from "@/features/ai/groq";
+import {
+  getGroqModel,
+  GROQ_MAX_RETRIES,
+  GROQ_TIMEOUT_MS,
+} from "@/features/ai/groq";
 import {
   buildTriagePrompt,
   buildTriageUserMessage,
@@ -12,13 +16,20 @@ import {
   type RecordedDecision,
 } from "@/features/agent/tools";
 import { summariseAndNotify } from "@/features/agent/tools/notify";
-import { markEmailHandledIfAbsent, markEmailNotified } from "@/db/queries";
+import {
+  claimEmailForProcessing,
+  markEmailHandledIfAbsent,
+  markEmailNotified,
+} from "@/db/queries";
 import {
   createUsageCollector,
   type TokenUsage,
   type UsageCollector,
 } from "@/features/agent/usage";
+import { scopedLogger } from "@/lib/logger";
 import type { AgentRunSummary, EmailDecision, ResolvedAccount } from "./types";
+
+const log = scopedLogger("AGENT");
 
 const EMAIL_PROCESS_DELAY_MS = 500;
 // One-shot triage: force a single tool call, no follow-up model turn.
@@ -45,8 +56,19 @@ export async function processEmails(
   const model = getGroqModel();
   const decisions: EmailDecision[] = [];
   const collector = createUsageCollector();
+  let claimed = 0;
 
   for (const [index, email] of emails.entries()) {
+    // Claim before triaging so exactly one run notifies on this email; a
+    // concurrent run that lost the claim skips it (no duplicate summary).
+    const won = await claimEmailForProcessing(account.userId, email.messageId);
+
+    if (!won) {
+      log.info({ subject: email.subject }, "skipping already-claimed email");
+      continue;
+    }
+
+    claimed += 1;
     const decision = await triageEmail(
       model,
       systemPrompt,
@@ -65,7 +87,7 @@ export async function processEmails(
   const usage = collector.snapshot();
 
   return {
-    summary: buildRunSummary(emails.length, decisions, usage),
+    summary: buildRunSummary(claimed, decisions, usage),
     decisions,
     usage,
   };
@@ -128,7 +150,7 @@ async function runTriageModel(
   });
 
   try {
-    console.log(`[AGENT] Triaging: ${email.subject}`);
+    log.info({ subject: email.subject }, "triaging email");
 
     const result = await generateText({
       model,
@@ -137,13 +159,17 @@ async function runTriageModel(
       tools,
       toolChoice: "required",
       stopWhen: stepCountIs(TRIAGE_MAX_STEPS),
+      // Bounded so one stalled triage can't consume the run; a failure here is
+      // caught below and falls back to a summary.
+      abortSignal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+      maxRetries: GROQ_MAX_RETRIES,
     });
     collector.add(result.usage);
   } catch (error) {
-    console.error(
-      `[AGENT] Triage failed for userId: ${account.userId}, email: ${email.subject}`,
+    log.error(
+      { userId: account.userId, subject: email.subject, err: error },
+      "triage failed",
     );
-    console.error(error);
   }
 }
 
@@ -185,7 +211,7 @@ async function fallbackToSummary(
 // re-triages it, re-sending its summary/notification (duplicate mail). The
 // failure backstop is non-clobbering so it can't overwrite a row the tool did
 // manage to write (e.g. a draft that was saved but whose Signal send failed).
-async function recordHandled(userId: string, messageId: string, decision: EmailDecision) {
+export async function recordHandled(userId: string, messageId: string, decision: EmailDecision) {
   const selfPersisting = SELF_PERSISTING_DECISIONS.has(decision.decision);
 
   if (selfPersisting && !toolDidFail(decision)) {
@@ -199,16 +225,16 @@ async function recordHandled(userId: string, messageId: string, decision: EmailD
       await markEmailNotified(userId, messageId);
     }
   } catch (error) {
-    console.error(
-      `[AGENT] Failed to mark email handled for userId: ${userId}, message: ${messageId}`,
+    log.error(
+      { userId, messageId, err: error },
+      "failed to mark email handled",
     );
-    console.error(error);
   }
 }
 
 // Tools flag a failed run via toolCall.args.failed; on failure they skip their
 // own processed_emails write, so the email needs the "notified" backstop.
-function toolDidFail(decision: EmailDecision): boolean {
+export function toolDidFail(decision: EmailDecision): boolean {
   const args = (decision.toolCalls as { args?: { failed?: unknown } } | null)?.args;
 
   return args?.failed === true;

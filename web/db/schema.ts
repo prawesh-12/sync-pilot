@@ -1,4 +1,5 @@
 import {
+    bigint,
     boolean,
     integer,
     jsonb,
@@ -260,4 +261,85 @@ export const pendingActions = pgTable("pending_actions", {
         .notNull()
         .defaultNow(),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+// Lifecycle of an inbound Signal message once drained from signal-cli. The
+// receive endpoint is destructive, so messages are persisted here BEFORE
+// processing and only marked done on success; failures retry up to a cap.
+export const INBOUND_SIGNAL_STATUS_VALUES = [
+    "received",
+    "processed",
+    "failed",
+    "dead",
+] as const;
+export type InboundSignalStatusValue =
+    (typeof INBOUND_SIGNAL_STATUS_VALUES)[number];
+
+export const inboundSignalMessages = pgTable(
+    "inbound_signal_messages",
+    {
+        id: uuid("id").defaultRandom().primaryKey(),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        // The phone that sent the reply (the user's own linked number).
+        sourceNumber: text("source_number").notNull(),
+        text: text("text").notNull(),
+        // signal-cli envelope timestamp (epoch ms); unique per message per sender.
+        signalTimestamp: bigint("signal_timestamp", { mode: "number" }).notNull(),
+        status: text("status")
+            .$type<InboundSignalStatusValue>()
+            .notNull()
+            .default("received"),
+        attempts: integer("attempts").notNull().default(0),
+        lastError: text("last_error"),
+        receivedAt: timestamp("received_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+        processedAt: timestamp("processed_at", { withTimezone: true }),
+    },
+    (table) => [
+        // Dedup re-drains (e.g. overlapping polls) so a message is stored once.
+        unique("inbound_signal_source_ts_unique").on(
+            table.sourceNumber,
+            table.signalTimestamp,
+        ),
+    ],
+);
+
+// Durable lifecycle of a queued BullMQ sync job, reported by the EC2 worker so
+// job outcomes survive Redis retention and are queryable for ops/alerting.
+export const SYNC_JOB_STATUS_VALUES = [
+    "enqueued",
+    "active",
+    "completed",
+    "failed",
+    "dead",
+] as const;
+export type SyncJobStatusValue = (typeof SYNC_JOB_STATUS_VALUES)[number];
+
+export const syncJobs = pgTable("sync_jobs", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bullJobId: text("bull_job_id").notNull().unique(),
+    userId: text("user_id").notNull(),
+    integrationId: text("integration_id").notNull(),
+    status: text("status").$type<SyncJobStatusValue>().notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    enqueuedAt: timestamp("enqueued_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
+
+// Records each external webhook delivery we have already applied, so a provider
+// re-delivering the same event (Razorpay retries) is a no-op. Keyed by the
+// provider's event id.
+export const processedWebhookEvents = pgTable("processed_webhook_events", {
+    eventId: text("event_id").primaryKey(),
+    provider: text("provider").notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
 });

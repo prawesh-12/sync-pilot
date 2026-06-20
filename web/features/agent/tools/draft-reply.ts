@@ -8,7 +8,10 @@ import {
   markEmailDrafted,
   savePendingAction,
 } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 import type { TriageToolContext } from "./types";
+
+const log = scopedLogger("AGENT");
 
 // Caps the draft shown on Signal; high enough to show a full reply in one message.
 const DRAFT_BODY_MAX_CHARACTERS = 2000;
@@ -60,8 +63,9 @@ async function draftAndQueue(
   );
 
   if (existing) {
-    console.log(
-      `[AGENT] Draft already pending for message: ${ctx.email.messageId}, refCode: ${existing.refCode}; skipping.`,
+    log.info(
+      { messageId: ctx.email.messageId, refCode: existing.refCode },
+      "draft already pending; skipping",
     );
 
     return false;
@@ -92,16 +96,17 @@ async function draftAndQueue(
         subject: ctx.email.subject,
       },
     });
-    console.log(
-      `[AGENT] Draft pending confirmation saved for message: ${ctx.email.messageId}, refCode: ${pending?.refCode ?? "missing"}`,
+    log.info(
+      { messageId: ctx.email.messageId, refCode: pending?.refCode ?? "missing" },
+      "draft pending confirmation saved",
     );
 
     return notifyDraftReady(ctx, body, pending?.refCode);
   } catch (error) {
-    console.error(
-      `[AGENT] draftReply failed for userId: ${ctx.userId}, message: ${ctx.email.messageId}`,
+    log.error(
+      { userId: ctx.userId, messageId: ctx.email.messageId, err: error },
+      "draftReply failed",
     );
-    console.error(error);
 
     return false;
   }

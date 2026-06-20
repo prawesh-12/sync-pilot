@@ -159,9 +159,13 @@ export function getRazorpayWebhookSecret() {
 export function isRazorpayConfigured() {
     const env = getEnv();
 
+    // Require the webhook secret too: without it, the webhook 401s every
+    // delivery and subscription status never updates, so billing is silently
+    // broken. Treating it as "not configured" makes that detectable up front.
     return Boolean(
         env.RAZORPAY_KEY_ID &&
             env.RAZORPAY_KEY_SECRET &&
-            env.RAZORPAY_PLAN_ID,
+            env.RAZORPAY_PLAN_ID &&
+            env.RAZORPAY_WEBHOOK_SECRET,
     );
 }

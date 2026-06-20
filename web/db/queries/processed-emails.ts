@@ -61,6 +61,41 @@ export async function markEmailNotified(userId: string, messageId: string) {
   });
 }
 
+// Claims an email for processing so exactly one run notifies on it, closing the
+// duplicate-notification race between overlapping cron ticks. Returns true if
+// THIS run won the claim and should triage + notify.
+//
+// A fresh email (no row) is inserted and won. A resurfaced due email already has
+// a row in a claimable state ("snoozed" or freshly "active"), so the conditional
+// DO UPDATE flips it to "notified" and wins — but only for the first run, since
+// the second sees status "notified" (not claimable) and loses. Already-handled
+// emails ("notified"/"drafted"/"archived") are never re-claimed.
+const CLAIMABLE_STATUSES: ProcessedEmailStatusValue[] = ["snoozed", "active"];
+
+export async function claimEmailForProcessing(
+  userId: string,
+  messageId: string,
+): Promise<boolean> {
+  const db = getDb();
+  const rows = await db
+    .insert(processedEmails)
+    .values({
+      messageId,
+      userId,
+      status: "notified",
+      snoozedUntil: null,
+      gmailDraftId: null,
+    })
+    .onConflictDoUpdate({
+      target: processedEmails.messageId,
+      set: { status: "notified", snoozedUntil: null, gmailDraftId: null },
+      setWhere: inArray(processedEmails.status, CLAIMABLE_STATUSES),
+    })
+    .returning({ messageId: processedEmails.messageId });
+
+  return rows.length > 0;
+}
+
 // Backstop for a self-persisting tool (draft/snooze/archive) that FAILED before
 // writing its own row: record the email as handled so it is not re-triaged and
 // re-notified. Non-clobbering — if the tool actually did write a row (e.g. the

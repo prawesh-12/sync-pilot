@@ -34,4 +34,8 @@ export const serverConfig = {
   // Only the worker needs this; validated in agent.ts so the intake server can
   // run without it.
   webAppUrl: process.env.WEB_APP_URL ?? "",
+  // BullMQ dashboard Basic-auth credentials; the dashboard is only mounted when
+  // both are set, so it can't be exposed unauthenticated by accident.
+  queueDashboardUser: process.env.QUEUE_DASHBOARD_USER ?? "",
+  queueDashboardPassword: process.env.QUEUE_DASHBOARD_PASSWORD ?? "",
 };

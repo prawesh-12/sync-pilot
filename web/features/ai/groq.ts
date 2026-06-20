@@ -5,6 +5,13 @@ import { generateText } from "ai";
 type ProviderOptions = NonNullable<
   Parameters<typeof generateText>[0]["providerOptions"]
 >;
+
+// Bound Groq calls so one hung request can't consume the whole cron window.
+const GROQ_TIMEOUT_MS = 30_000;
+const GROQ_MAX_RETRIES = 2;
+
+// Exported so tool-calling callers (triage) can apply the same timeout.
+export { GROQ_TIMEOUT_MS, GROQ_MAX_RETRIES };
 import { getGroqConfig, isGroqConfigured } from "@/config/env";
 
 type TextCompletionParams = {
@@ -60,6 +67,10 @@ export async function createTextCompletion({
     temperature: temperature ?? 0.2,
     maxOutputTokens: maxOutputTokens ?? 500,
     providerOptions,
+    // Bound the call and let the SDK retry transient (429/5xx) failures; text
+    // generation is safe to retry. Prevents one hung call stalling the run.
+    abortSignal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+    maxRetries: GROQ_MAX_RETRIES,
   });
 
   return {

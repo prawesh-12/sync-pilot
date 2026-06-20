@@ -1,6 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { scopedLogger } from "@/lib/logger";
 import type { TriageToolContext } from "./types";
+
+const log = scopedLogger("AGENT");
 
 // No-op action: logs the reasoning but sends nothing.
 export function createIgnoreTool(ctx: TriageToolContext) {
@@ -21,7 +24,7 @@ export function createIgnoreTool(ctx: TriageToolContext) {
         toolCall: { name: "ignore", args: { reason } },
       });
 
-      console.log(`[AGENT] Ignored: ${ctx.email.subject} — ${reason}`);
+      log.info({ subject: ctx.email.subject, reason }, "ignored email");
 
       return { notified: false };
     },

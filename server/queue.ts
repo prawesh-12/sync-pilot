@@ -1,5 +1,6 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { serverConfig } from "./config";
+import { reportJobStatus } from "./report-status";
 
 export const SYNC_QUEUE_NAME = "email-sync";
 const SYNC_JOB_NAME = "sync";
@@ -47,8 +48,20 @@ export async function enqueueSyncJobs(jobs: SyncJob[]): Promise<number> {
     return 0;
   }
 
-  await getEmailQueue().addBulk(
+  const added = await getEmailQueue().addBulk(
     jobs.map((job) => ({ name: SYNC_JOB_NAME, data: job })),
+  );
+
+  // Record each job as enqueued so its lifecycle is tracked from the start.
+  await Promise.all(
+    added.map((job) =>
+      reportJobStatus({
+        bullJobId: String(job.id),
+        userId: job.data.userId,
+        integrationId: job.data.integrationId,
+        status: "enqueued",
+      }),
+    ),
   );
 
   return jobs.length;

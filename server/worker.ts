@@ -1,9 +1,13 @@
 import { Worker, type Job } from "bullmq";
 import { runAgent } from "./agent";
 import { redisConnection, SYNC_QUEUE_NAME, type SyncJob } from "./queue";
+import { reportJobStatus, type SyncJobStatus } from "./report-status";
+import { scopedLogger } from "./logger";
 
 // Process this many Gmail accounts at the same time, per the plan's target.
 const WORKER_CONCURRENCY = 10;
+
+const log = scopedLogger("WORKER");
 
 // Consumes one sync job and runs the agent for that integration.
 export function processJob(job: SyncJob): Promise<void> {
@@ -20,17 +24,44 @@ function startWorker() {
     },
   );
 
+  worker.on("active", (job) => {
+    void report(job, "active");
+  });
+
   worker.on("completed", (job) => {
-    console.log(
-      `[WORKER] Completed job ${job.id} for integration ${job.data.integrationId}`,
+    log.info(
+      { jobId: job.id, integrationId: job.data.integrationId },
+      "job completed",
     );
+    void report(job, "completed");
   });
 
   worker.on("failed", (job, error) => {
-    console.error(`[WORKER] Job ${job?.id} failed: ${error.message}`);
+    log.error(
+      { jobId: job?.id, integrationId: job?.data.integrationId, err: error.message },
+      "job failed",
+    );
+
+    if (job) {
+      // BullMQ fires "failed" on every attempt; the job is truly dead once it
+      // has used its final attempt.
+      const isDead = job.attemptsMade >= (job.opts.attempts ?? 1);
+      void report(job, isDead ? "dead" : "failed", error.message);
+    }
   });
 
   registerShutdown(worker);
+}
+
+function report(job: Job<SyncJob>, status: SyncJobStatus, error?: string) {
+  return reportJobStatus({
+    bullJobId: String(job.id),
+    userId: job.data.userId,
+    integrationId: job.data.integrationId,
+    status,
+    attempts: job.attemptsMade,
+    error,
+  });
 }
 
 // Let BullMQ finish in-flight jobs before the container stops.

@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { getSignalIntegration } from "@/db/queries";
 import { getSignalConfig, isSignalConfigured } from "@/config/env";
+import { scopedLogger } from "@/lib/logger";
+
+const log = scopedLogger("SIGNAL");
 
 const SIGNAL_RECEIVE_PATH = "v1/receive";
 // Generous: a slow signal-cli read drains the queue server-side, so aborting
@@ -23,6 +26,7 @@ const envelopeSchema = z.object({
     .object({
       source: optionalString,
       sourceNumber: optionalString,
+      timestamp: z.number().nullish(),
       dataMessage: z
         .object({ message: optionalString })
         .nullish(),
@@ -33,6 +37,7 @@ const envelopeSchema = z.object({
               destination: optionalString,
               destinationNumber: optionalString,
               message: optionalString,
+              timestamp: z.number().nullish(),
             })
             .nullish(),
         })
@@ -46,6 +51,8 @@ const receiveResponseSchema = z.array(envelopeSchema);
 export type InboundSignalMessage = {
   from: string;
   text: string;
+  // signal-cli envelope timestamp (epoch ms); 0 when absent.
+  timestamp: number;
 };
 
 // Reads new Signal messages addressed to the user's linked number, keeping only
@@ -67,7 +74,7 @@ export async function receiveSignalMessages(
     return await fetchInboundMessages(integration);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Signal receive failed.";
-    console.error(`[SIGNAL] receive failed for userId: ${userId} - ${reason}`);
+    log.error({ userId, reason }, "Signal receive failed");
 
     return [];
   }
@@ -87,9 +94,7 @@ export async function receiveSignalMessagesForSender(
     return await fetchInboundMessagesForSender(senderNumber);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Signal receive failed.";
-    console.error(
-      `[SIGNAL] receive failed for senderNumber: ${senderNumber} - ${reason}`,
-    );
+    log.error({ senderNumber, reason }, "Signal receive failed");
 
     return [];
   }
@@ -177,8 +182,9 @@ function extractMessages(data: unknown): InboundSignalMessage[] {
   const parsed = receiveResponseSchema.safeParse(data);
 
   if (!parsed.success) {
-    console.log(
-      `[SIGNAL] Receive response shape was not recognized: ${describeReceiveShape(data)}`,
+    log.info(
+      { shape: describeReceiveShape(data) },
+      "receive response shape not recognized",
     );
     return [];
   }
@@ -194,8 +200,9 @@ function extractMessages(data: unknown): InboundSignalMessage[] {
   }
 
   if (parsed.data.length > 0 && messages.length === 0) {
-    console.log(
-      `[SIGNAL] Receive response had ${parsed.data.length} envelopes but no text messages: ${describeReceiveShape(data)}`,
+    log.info(
+      { envelopes: parsed.data.length, shape: describeReceiveShape(data) },
+      "receive response had envelopes but no text messages",
     );
   }
 
@@ -218,12 +225,14 @@ function toInboundMessage(
     envelope?.source ||
     ""
   ).trim();
+  const timestamp =
+    envelope?.timestamp ?? envelope?.syncMessage?.sentMessage?.timestamp ?? 0;
 
   if (!text || !from) {
     return null;
   }
 
-  return { from, text };
+  return { from, text, timestamp };
 }
 
 function describeReceiveShape(data: unknown) {

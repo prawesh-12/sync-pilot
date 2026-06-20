@@ -1,4 +1,7 @@
+import { scopedLogger } from "@/lib/logger";
 import type { DecisionName, TriageToolContext } from "./types";
+
+const log = scopedLogger("AGENT");
 
 type ActionSpec = {
   decision: DecisionName;
@@ -18,10 +21,15 @@ export async function recordAction(
     await spec.run();
     ctx.record(buildDecision(spec, false));
   } catch (error) {
-    console.error(
-      `[AGENT] ${spec.toolName} failed for userId: ${ctx.userId}, message: ${ctx.email.messageId}`,
+    log.error(
+      {
+        tool: spec.toolName,
+        userId: ctx.userId,
+        messageId: ctx.email.messageId,
+        err: error,
+      },
+      "Gmail action failed",
     );
-    console.error(error);
     ctx.record(buildDecision(spec, true));
   }
 

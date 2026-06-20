@@ -24,7 +24,7 @@ export async function buildFeedbackDigest(userId: string): Promise<string> {
   return `Recent user feedback: ${parts.join("; ")}. Weigh this when choosing a tool.`;
 }
 
-function groupFeedback(
+export function groupFeedback(
   feedback: { action: FeedbackActionValue; decision: DecisionValue }[],
 ): FeedbackGroup[] {
   const groups = new Map<string, FeedbackGroup>();
@@ -43,7 +43,7 @@ function groupFeedback(
   return [...groups.values()];
 }
 
-function describeGroup(group: FeedbackGroup): string {
+export function describeGroup(group: FeedbackGroup): string {
   const times = group.count === 1 ? "time" : "times";
 
   return `the user ${group.action} your "${getDecisionLabel(group.decision)}" decision ${group.count} ${times}`;

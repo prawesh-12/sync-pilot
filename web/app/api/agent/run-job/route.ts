@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runAgent } from "@/features/agent/run-agent";
 import { getSyncSecret } from "@/config/env";
+import { secureEquals } from "@/lib/secure-compare";
+import { scopedLogger } from "@/lib/logger";
 
 export const preferredRegion = "sin1";
 // One job processes a whole Gmail account, so allow a long execution window.
 export const maxDuration = 300;
 
 const SYNC_SECRET_HEADER = "x-secret";
+const log = scopedLogger("AGENT_API");
 
 const jobSchema = z.object({
     userId: z.string().trim().min(1),
@@ -39,8 +42,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json(summary);
     } catch (error) {
-        console.error("[AGENT_API] run-job failed");
-        console.error(error);
+        log.error({ err: error }, "run-job failed");
 
         return NextResponse.json(
             { error: "Agent run failed." },
@@ -51,7 +53,14 @@ export async function POST(request: Request) {
 
 function isAuthorized(request: Request) {
     try {
-        return request.headers.get(SYNC_SECRET_HEADER) === getSyncSecret();
+        const provided = request.headers.get(SYNC_SECRET_HEADER);
+        const expected = getSyncSecret();
+
+        if (!provided || !expected) {
+            return false;
+        }
+
+        return secureEquals(provided, expected);
     } catch {
         // SYNC_SECRET not configured; treat as unauthorized rather than crash.
         return false;

@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createRazorpaySubscription } from "@/lib/razorpay";
 import { saveSubscription, upsertUser } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
+
+const log = scopedLogger("BILLING");
 
 export async function POST() {
   const session = await auth();
@@ -32,8 +35,7 @@ export async function POST() {
       shortUrl: subscription.shortUrl,
     });
   } catch (error) {
-    console.error("[BILLING] Failed to create subscription");
-    console.error(error);
+    log.error({ err: error }, "failed to create subscription");
 
     return NextResponse.json(
       { error: "Could not start checkout." },

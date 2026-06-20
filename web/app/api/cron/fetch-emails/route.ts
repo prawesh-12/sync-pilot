@@ -11,6 +11,8 @@ import {
     getSyncSecret,
     isQueueEnabled,
 } from "@/config/env";
+import { secureEquals } from "@/lib/secure-compare";
+import { scopedLogger } from "@/lib/logger";
 
 export const preferredRegion = "sin1";
 // The inline fallback can run several accounts; allow a long window.
@@ -21,6 +23,7 @@ const SYNC_PATH = "/sync";
 const SYNC_SECRET_HEADER = "x-secret";
 // Enqueue is a quick fan-out call; the worker pool does the slow agent runs.
 const ENQUEUE_TIMEOUT_MS = 15_000;
+const log = scopedLogger("CRON");
 
 type SyncJob = {
     userId: string;
@@ -56,8 +59,7 @@ async function handleCronRequest(request: Request) {
 
         return await runJobsInline(jobs);
     } catch (error) {
-        console.error("[CRON] fetch-emails handler failed");
-        console.error(error);
+        log.error({ err: error }, "fetch-emails handler failed");
 
         return NextResponse.json(
             { error: "Cron execution failed." },
@@ -127,5 +129,9 @@ async function collectSyncJobs(): Promise<SyncJob[]> {
 function isAuthorized(request: Request, cronSecret: string) {
     const authorization = request.headers.get("authorization");
 
-    return authorization === `Bearer ${cronSecret}`;
+    if (!authorization || !cronSecret) {
+        return false;
+    }
+
+    return secureEquals(authorization, `Bearer ${cronSecret}`);
 }

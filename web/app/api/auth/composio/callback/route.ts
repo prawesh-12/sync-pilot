@@ -4,7 +4,9 @@ import { getLatestGmailConnection } from "@/lib/composio";
 import { getConnectedGmailAddress } from "@/features/gmail/gmail";
 import { saveGmailAccount, upsertUser } from "@/db/queries";
 import { sanitizeLabel, sanitizeReturnTo } from "@/lib/utils";
+import { scopedLogger } from "@/lib/logger";
 
+const log = scopedLogger("COMPOSIO_OAUTH");
 const GMAIL_CONNECTED_STATUS = "connected";
 const GMAIL_FAILED_STATUS = "failed";
 const COMPOSIO_SUCCESS_STATUS = "success";
@@ -55,8 +57,7 @@ export async function GET(request: Request) {
     const message =
       error instanceof Error ? error.message : "Composio callback failed.";
 
-    console.error("[COMPOSIO_OAUTH] Callback failed");
-    console.error(error);
+    log.error({ err: error }, "callback failed");
 
     return NextResponse.redirect(
       getReturnUrl(request, returnTo, GMAIL_FAILED_STATUS, message),
@@ -70,8 +71,7 @@ async function resolveGmailAddress(userId: string, connectedAccountId: string) {
 
     return address ?? "";
   } catch (error) {
-    console.error("[COMPOSIO_OAUTH] Failed to resolve connected Gmail address");
-    console.error(error);
+    log.error({ err: error }, "failed to resolve connected Gmail address");
 
     return "";
   }

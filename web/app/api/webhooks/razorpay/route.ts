@@ -1,9 +1,18 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { verifyRazorpayWebhookSignature } from "@/lib/razorpay";
-import { setUserPlan, updateSubscriptionByRazorpayId } from "@/db/queries";
+import {
+  claimWebhookEvent,
+  setUserPlan,
+  updateSubscriptionByRazorpayId,
+} from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 import type { SubscriptionStatusValue } from "@/db/schema";
 
 export const runtime = "nodejs";
+
+const WEBHOOK_PROVIDER = "razorpay";
+const log = scopedLogger("BILLING");
 
 const MILLISECONDS_PER_SECOND = 1000;
 const ACTIVE_EVENTS = new Set([
@@ -27,12 +36,20 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Razorpay retries deliveries; claim the event id first so a duplicate
+    // delivery is a no-op instead of re-applying the plan change.
+    const eventId = readEventId(request, rawBody);
+    const isFirstDelivery = await claimWebhookEvent(eventId, WEBHOOK_PROVIDER);
+
+    if (!isFirstDelivery) {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+
     await handleEvent(JSON.parse(rawBody));
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("[BILLING] Razorpay webhook handling failed");
-    console.error(error);
+    log.error({ err: error }, "Razorpay webhook handling failed");
 
     return NextResponse.json(
       { error: "Webhook handling failed." },
@@ -79,6 +96,18 @@ async function applyPlan(
   if (row) {
     await setUserPlan(row.userId, plan);
   }
+}
+
+// Razorpay sends a unique x-razorpay-event-id per logical event (stable across
+// its retries). Fall back to a content hash if the header is ever absent.
+function readEventId(request: Request, rawBody: string): string {
+  const header = request.headers.get("x-razorpay-event-id");
+
+  if (header) {
+    return header;
+  }
+
+  return `sha256:${createHash("sha256").update(rawBody).digest("hex")}`;
 }
 
 function readEvent(payload: unknown): string {

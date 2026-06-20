@@ -1,7 +1,10 @@
 import { summariseEmail } from "@/features/ai/summarise";
 import { sendSignalMessage } from "@/features/signal/signal";
+import { scopedLogger } from "@/lib/logger";
 import type { GmailEmail } from "@/features/gmail/gmail";
 import type { LanguageModelUsage } from "ai";
+
+const log = scopedLogger("AGENT");
 
 type NotifyOptions = {
   urgent?: boolean;
@@ -43,8 +46,7 @@ async function summariseSafely(
 
     return { text: summary.text.trim(), usage: summary.usage };
   } catch (error) {
-    console.error(`[AI] Failed to summarise email: ${email.subject}`);
-    console.error(error);
+    log.error({ subject: email.subject, err: error }, "failed to summarise email");
 
     return { text: "", usage: undefined };
   }
@@ -59,15 +61,17 @@ async function sendSummaryToSignal(
   const result = await sendSignalMessage(summary, email.subject, userId, options);
 
   if (!result.ok) {
-    console.error(
-      `[SIGNAL] Failed to send for: ${email.subject} (${result.error || "Unknown error"})`,
+    log.error(
+      { subject: email.subject, error: result.error || "Unknown error" },
+      "Signal summary send failed",
     );
 
     return false;
   }
 
-  console.log(
-    `[SIGNAL] Sent ${options?.urgent ? "urgent " : ""}summary for: ${email.subject}`,
+  log.info(
+    { subject: email.subject, urgent: Boolean(options?.urgent) },
+    "summary sent",
   );
 
   return true;

@@ -12,6 +12,7 @@ import {
     saveAgentRun,
     updateGmailAccountLastRun,
 } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 import type {
     AgentRunSummary,
     EmailDecision,
@@ -19,6 +20,8 @@ import type {
 } from "@/features/agent/types";
 
 export type { AgentRunSummary } from "@/features/agent/types";
+
+const log = scopedLogger("CRON");
 
 export async function runAgent(
     userId: string,
@@ -40,13 +43,11 @@ async function executeAgentRun(
     integrationId: string,
     windowEnd: Date,
 ): Promise<AgentRunSummary> {
-    console.log(
-        `[CRON] Starting agent run for userId: ${userId}, integrationId: ${integrationId}`,
-    );
+    log.info({ userId, integrationId }, "starting agent run");
 
     const account = await resolveGmailAccount(userId, integrationId);
     const emails = await collectEmails(account, windowEnd);
-    console.log(`[GMAIL] Processing ${emails.length} emails this run`);
+    log.info({ count: emails.length }, "processing emails this run");
 
     const { summary, decisions, usage } = await processEmails(account, emails);
     const run = await saveRunResult(userId, summary, usage);
@@ -57,7 +58,7 @@ async function executeAgentRun(
 
     await persistUserUsage(userId, windowEnd, usage, summary.emailsFound);
 
-    console.log(`[CRON] Run complete - ${summary.summariesSent} summaries sent`);
+    log.info({ summariesSent: summary.summariesSent }, "run complete");
 
     return summary;
 }
@@ -68,10 +69,10 @@ async function handleRunFailure(
     error: unknown,
 ): Promise<AgentRunSummary> {
     const message = getErrorMessage(error);
-    console.error(
-        `[CRON] Agent run failed for userId: ${userId}, integrationId: ${integrationId} - ${message}`,
+    log.error(
+        { userId, integrationId, err: error },
+        "agent run failed",
     );
-    console.error(error);
 
     const result = buildErrorResult();
     await saveRunResult(userId, result, EMPTY_TOKEN_USAGE, message);
@@ -127,10 +128,7 @@ async function persistDecisions(
             })),
         );
     } catch (error) {
-        console.error(
-            `[CRON] Failed to persist agent decisions for runId: ${runId}`,
-        );
-        console.error(error);
+        log.error({ runId, err: error }, "failed to persist agent decisions");
     }
 }
 
@@ -152,10 +150,7 @@ async function persistUserUsage(
             emailCount,
         );
     } catch (error) {
-        console.error(
-            `[CRON] Failed to persist user usage for userId: ${userId}`,
-        );
-        console.error(error);
+        log.error({ userId, err: error }, "failed to persist user usage");
     }
 }
 
@@ -166,10 +161,10 @@ async function persistLastRunTimestamp(
     try {
         await updateGmailAccountLastRun(integrationId, lastRunTimestamp);
     } catch (error) {
-        console.error(
-            `[CRON] Failed to persist last_run_timestamp for integrationId: ${integrationId}`,
+        log.error(
+            { integrationId, err: error },
+            "failed to persist last_run_timestamp",
         );
-        console.error(error);
     }
 }
 
@@ -182,14 +177,10 @@ async function saveRunResult(
     try {
         return await saveAgentRun(userId, result, usage);
     } catch (error) {
-        console.error(
-            `[CRON] Failed to persist agent run for userId: ${userId}`,
+        log.error(
+            { userId, err: error, originalError: errorMessage },
+            "failed to persist agent run",
         );
-        console.error(error);
-
-        if (errorMessage) {
-            console.error(`[CRON] Original run error: ${errorMessage}`);
-        }
 
         return null;
     }

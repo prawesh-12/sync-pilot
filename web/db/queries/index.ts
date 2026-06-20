@@ -7,3 +7,6 @@ export * from "./user-usage";
 export * from "./processed-emails";
 export * from "./pending-actions";
 export * from "./subscriptions";
+export * from "./webhook-events";
+export * from "./inbound-signal";
+export * from "./sync-jobs";

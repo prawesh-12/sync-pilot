@@ -137,6 +137,39 @@ export async function resolvePendingAction(
   return row ?? null;
 }
 
+// Atomically transitions a still-"pending" action to a resolved status, winning
+// only if it was pending. Returns true if THIS caller won the claim. Used to
+// guard non-idempotent side effects (sending/discarding a draft): claim first,
+// then act, so a Signal-reply retry of a send that already went through finds
+// the action resolved and skips it instead of re-sending.
+export async function claimPendingAction(
+  id: string,
+  status: PendingActionStatusValue,
+): Promise<boolean> {
+  const db = getDb();
+  const rows = await db
+    .update(pendingActions)
+    .set({ status, resolvedAt: new Date() })
+    .where(and(eq(pendingActions.id, id), eq(pendingActions.status, "pending")))
+    .returning({ id: pendingActions.id });
+
+  return rows.length > 0;
+}
+
+// Returns a claimed action to "pending" so it can be retried. Used when a
+// side effect failed cleanly (definitely did not happen), as opposed to a
+// timeout where it may have succeeded.
+export async function releasePendingAction(id: string) {
+  const db = getDb();
+  const [row] = await db
+    .update(pendingActions)
+    .set({ status: "pending", resolvedAt: null })
+    .where(eq(pendingActions.id, id))
+    .returning({ id: pendingActions.id });
+
+  return row ?? null;
+}
+
 // Swaps in a revised draft while keeping the same ref code so the user reuses it.
 export async function updatePendingActionPayload(id: string, payload: unknown) {
   const db = getDb();

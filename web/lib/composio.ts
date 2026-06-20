@@ -1,8 +1,12 @@
 import { Composio } from "@composio/core";
 import { VercelProvider } from "@composio/vercel";
 import { getComposioConfig } from "@/config/env";
+import { withTimeoutAndRetry } from "@/lib/retry";
 
 const GMAIL_TOOLKIT_SLUG = "gmail";
+// Bound how long we wait on Composio so one hung call can't consume the whole
+// cron window. Retries are opt-in per call (idempotent reads only).
+const GMAIL_TOOL_TIMEOUT_MS = 30_000;
 
 type GmailToolResult = {
     successful: boolean;
@@ -58,26 +62,41 @@ function byNewestFirst(
     return (second.createdAt ?? "").localeCompare(first.createdAt ?? "");
 }
 
+// Set retries > 0 ONLY for idempotent reads (fetching mail/profile). Leave it 0
+// for mutations (send/archive/draft/label): a timed-out-but-applied write must
+// never be repeated, or the user gets duplicate sends.
+type ExecuteOptions = { retries?: number };
+
 export async function executeGmailTool(
     userId: string,
     slug: string,
     args: Record<string, unknown> = {},
     connectedAccountId?: string,
+    options: ExecuteOptions = {},
 ): Promise<GmailToolResult> {
     const composio = getComposio();
     const { gmailToolkitVersion } = getComposioConfig();
-    // Composio requires a toolkit version for manual execution. Pin one via
-    // COMPOSIO_GMAIL_TOOLKIT_VERSION (recommended for production); otherwise
-    // fall back to "latest" with the version check explicitly skipped.
-    const response = await composio.tools.execute(slug, {
-        userId,
-        arguments: args,
-        // Target a specific account so users with multiple Gmails resolve correctly.
-        ...(connectedAccountId ? { connectedAccountId } : {}),
-        ...(gmailToolkitVersion
-            ? { version: gmailToolkitVersion }
-            : { dangerouslySkipVersionCheck: true }),
-    });
+
+    const response = await withTimeoutAndRetry(
+        () =>
+            // Composio requires a toolkit version for manual execution. Pin one
+            // via COMPOSIO_GMAIL_TOOLKIT_VERSION (recommended for production);
+            // otherwise fall back to "latest" with the version check skipped.
+            composio.tools.execute(slug, {
+                userId,
+                arguments: args,
+                // Target a specific account so multi-Gmail users resolve correctly.
+                ...(connectedAccountId ? { connectedAccountId } : {}),
+                ...(gmailToolkitVersion
+                    ? { version: gmailToolkitVersion }
+                    : { dangerouslySkipVersionCheck: true }),
+            }),
+        {
+            timeoutMs: GMAIL_TOOL_TIMEOUT_MS,
+            retries: options.retries ?? 0,
+            label: `Composio tool ${slug}`,
+        },
+    );
 
     if (!response.successful) {
         throw new Error(

@@ -41,6 +41,7 @@ export async function getConnectedGmailAddress(
         GMAIL_GET_PROFILE_TOOL,
         {},
         connectedAccountId,
+        { retries: 2 },
     );
     const emailAddress = findString(result.data, EMAIL_ADDRESS_KEYS);
 
@@ -62,6 +63,7 @@ export async function fetchEmailsInTimeWindow(
             max_results: GMAIL_MAX_RESULTS,
         },
         account.connectedAccountId,
+        { retries: 2 },
     );
 
     return extractMessages(result.data).reduce<GmailEmail[]>(
@@ -91,6 +93,7 @@ export async function fetchEmailById(
             format: GMAIL_MESSAGE_FORMAT,
         },
         account.connectedAccountId,
+        { retries: 2 },
     );
 
     return mapFetchedMessage(result.data, messageId);

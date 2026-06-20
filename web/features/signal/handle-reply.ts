@@ -15,16 +15,20 @@ import {
   type PendingAction,
 } from "@/features/signal/parse-reply";
 import {
+  claimPendingAction,
   markEmailDrafted,
   recordAgentFeedback,
-  resolvePendingAction,
+  releasePendingAction,
   updatePendingActionPayload,
 } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 import type { GmailActionAccount } from "@/features/gmail/gmail";
+
+const log = scopedLogger("SIGNAL");
 
 // Caps the draft shown on Signal; high enough to show a full reply in one message.
 const DRAFT_BODY_MAX_CHARACTERS = 2000;
-const FAILURE_NOTICE =
+export const FAILURE_NOTICE =
   "Something went wrong handling that reply. Please try again.";
 const FREEFORM_NOTICE =
   'Freeform commands are not supported yet. Reply with a draft ref code, e.g. "A3X9 send".';
@@ -47,16 +51,12 @@ export async function handleSignalReply(
   message: string,
 ): Promise<void> {
   const parsed = await parseReply({ message, userId });
-  console.log(`[SIGNAL] Parsed reply as: ${parsed.kind}`);
+  log.info({ kind: parsed.kind }, "parsed Signal reply");
 
-  try {
-    await dispatchReply(userId, parsed);
-  } catch (error) {
-    console.error(`[SIGNAL] Failed to handle reply for userId: ${userId}`);
-    console.error(error);
-    await sendSignalNotice(userId, FAILURE_NOTICE);
-    throw error;
-  }
+  // Throws propagate to the poll loop, which persists the failure and retries
+  // on a later tick. The user is notified once, only when retries are finally
+  // exhausted — so transient blips (a Groq timeout mid-revise) stay quiet.
+  await dispatchReply(userId, parsed);
 }
 
 async function dispatchReply(
@@ -87,13 +87,65 @@ async function confirmDraftSend(
   pending: PendingAction,
 ): Promise<void> {
   const payload = draftPayloadSchema.parse(pending.payload);
-  console.log(
-    `[SIGNAL] Sending Gmail draft for refCode: ${pending.refCode}, draftId: ${payload.draftId}`,
+
+  // Claim BEFORE sending so a retry of an already-sent draft (e.g. the send
+  // succeeded but the response timed out) finds the action resolved and skips,
+  // preventing a duplicate send.
+  const claimed = await claimPendingAction(pending.id, "confirmed");
+
+  if (!claimed) {
+    log.info(
+      { refCode: pending.refCode },
+      "draft send already handled; skipping",
+    );
+    return;
+  }
+
+  log.info(
+    { refCode: pending.refCode, draftId: payload.draftId },
+    "sending Gmail draft",
   );
-  await sendDraftReply(accountFor(userId, payload), payload.draftId);
-  await resolvePendingAction(pending.id, "confirmed");
+
+  try {
+    await sendDraftReply(accountFor(userId, payload), payload.draftId);
+  } catch (error) {
+    await handleSendFailure(userId, pending, payload, error);
+    return;
+  }
+
   await sendSignalNotice(userId, `Sent your reply for: ${payload.subject}`);
-  console.log(`[SIGNAL] Confirmed draft send for refCode: ${pending.refCode}`);
+  log.info({ refCode: pending.refCode }, "confirmed draft send");
+}
+
+// A send can fail two ways. A timeout may mean the message actually went
+// through, so we keep the claim (at-most-once) and tell the user to check. A
+// clean failure definitely did not send, so we release the claim and rethrow to
+// let the Signal poll retry it safely.
+async function handleSendFailure(
+  userId: string,
+  pending: PendingAction,
+  payload: DraftPayload,
+  error: unknown,
+): Promise<void> {
+  log.error(
+    { refCode: pending.refCode, err: error },
+    "draft send failed after claim",
+  );
+
+  if (isTimeout(error)) {
+    await sendSignalNotice(
+      userId,
+      `Couldn't confirm the send for: ${payload.subject}. Please check your Gmail Sent folder before resending.`,
+    );
+    return;
+  }
+
+  await releasePendingAction(pending.id);
+  throw error;
+}
+
+function isTimeout(error: unknown): boolean {
+  return error instanceof Error && /timed out/i.test(error.message);
 }
 
 async function discardDraft(
@@ -101,8 +153,28 @@ async function discardDraft(
   pending: PendingAction,
 ): Promise<void> {
   const payload = draftPayloadSchema.parse(pending.payload);
-  await deleteDraftReply(accountFor(userId, payload), payload.draftId);
-  await resolvePendingAction(pending.id, "discarded");
+
+  // Claim first so a retry doesn't discard twice; the actual delete is then
+  // best-effort (deleting an already-deleted draft is harmless).
+  const claimed = await claimPendingAction(pending.id, "discarded");
+
+  if (!claimed) {
+    log.info(
+      { refCode: pending.refCode },
+      "draft already handled; skipping discard",
+    );
+    return;
+  }
+
+  try {
+    await deleteDraftReply(accountFor(userId, payload), payload.draftId);
+  } catch (error) {
+    log.error(
+      { refCode: pending.refCode, err: error },
+      "failed to delete draft; action already marked discarded",
+    );
+  }
+
   await logDiscardFeedback(userId, pending, payload);
   await sendSignalNotice(userId, `Discarded the draft for: ${payload.subject}`);
 }
@@ -123,8 +195,7 @@ async function logDiscardFeedback(
       action: "discarded",
     });
   } catch (error) {
-    console.error(`[SIGNAL] Failed to record feedback for userId: ${userId}`);
-    console.error(error);
+    log.error({ userId, err: error }, "failed to record discard feedback");
   }
 }
 
@@ -186,7 +257,7 @@ async function reviseDraft(
 
 // True when the revised body is effectively the original (model made no real
 // edit). Compared on collapsed whitespace so cosmetic differences don't count.
-function isSameBody(a: string, b: string): boolean {
+export function isSameBody(a: string, b: string): boolean {
   const normalize = (value: string) => value.replace(/\s+/g, " ").trim();
 
   return normalize(a) === normalize(b);

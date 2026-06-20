@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { getSignalIntegration } from "@/db/queries";
 import { getSignalConfig, isSignalConfigured } from "@/config/env";
+import { scopedLogger } from "@/lib/logger";
+
+const log = scopedLogger("SIGNAL");
 
 const SIGNAL_MESSAGE_TITLE = "New Email Summary";
 const SIGNAL_URGENT_MESSAGE_TITLE = "URGENT";
@@ -180,7 +183,7 @@ async function postSignalMessage(
 }
 
 function failResult(error: string): SignalSendResult {
-    console.error(`[SIGNAL] ${error}`);
+    log.error({ error }, "Signal request failed");
 
     return {
         ok: false,
@@ -242,7 +245,7 @@ async function readSignalResponse(response: Response) {
 function buildSignalResult(statusCode: number, ok: boolean, data: unknown) {
     if (!ok) {
         const error = getSignalErrorMessage(data, statusCode);
-        console.error(`[SIGNAL] ${error}`);
+        log.error({ error, statusCode }, "Signal send returned an error");
 
         return {
             ok: false,

@@ -8,7 +8,13 @@ import {
   getHandledMessageIds,
   markEmailActive,
 } from "@/db/queries";
+import { scopedLogger } from "@/lib/logger";
 import type { ResolvedAccount } from "./types";
+
+const log = scopedLogger("AGENT");
+
+// "Name <addr@x.com>" -> "addr@x.com"; bare addresses pass through.
+const EMAIL_ADDRESS_PATTERN = /<([^>]+)>/;
 
 // Due snoozed emails plus the fresh, not-yet-handled time-window batch.
 export async function collectEmails(
@@ -18,8 +24,40 @@ export async function collectEmails(
   const resurfaced = await collectSnoozedEmails(account, windowEnd);
   const fresh = await fetchEmailsInTimeWindow(account, windowEnd);
   const unhandled = await dropHandledEmails(account.userId, fresh);
+  const combined = dedupeByMessageId([...resurfaced, ...unhandled]);
 
-  return dedupeByMessageId([...resurfaced, ...unhandled]);
+  return dropSelfSentEmails(combined, account.emailAddress);
+}
+
+// Never act on a message this account sent itself. When both correspondents'
+// accounts are connected, only the RECIPIENT should draft a reply — the sender's
+// own copy must not trigger a draft (or any notification) back to themselves.
+export function dropSelfSentEmails(
+  emails: GmailEmail[],
+  ownAddress: string | null,
+): GmailEmail[] {
+  const own = ownAddress?.trim().toLowerCase();
+
+  if (!own) {
+    return emails;
+  }
+
+  const kept = emails.filter((email) => extractAddress(email.from) !== own);
+
+  if (kept.length !== emails.length) {
+    log.info(
+      { dropped: emails.length - kept.length, account: own },
+      "skipped self-sent emails",
+    );
+  }
+
+  return kept;
+}
+
+function extractAddress(sender: string): string {
+  const match = sender.match(EMAIL_ADDRESS_PATTERN);
+
+  return (match ? match[1] : sender).trim().toLowerCase();
 }
 
 // Skip emails already triaged in a prior run so each one is handled once.
@@ -45,8 +83,9 @@ async function collectSnoozedEmails(
     return [];
   }
 
-  console.log(
-    `[AGENT] Resurfacing ${due.length} snoozed emails for userId: ${account.userId}`,
+  log.info(
+    { count: due.length, userId: account.userId },
+    "resurfacing snoozed emails",
   );
 
   const emails: GmailEmail[] = [];
@@ -78,10 +117,10 @@ async function resurfaceSnoozedEmail(
     return email;
   } catch (error) {
     // Likely belongs to another connected account; its own run will pick it up.
-    console.error(
-      `[AGENT] Could not resurface message ${messageId} for userId: ${account.userId}`,
+    log.error(
+      { messageId, userId: account.userId, err: error },
+      "could not resurface snoozed message",
     );
-    console.error(error);
 
     return null;
   }
