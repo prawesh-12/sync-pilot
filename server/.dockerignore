@@ -1,0 +1,23 @@
+# Keep the build context (and image) lean: dependencies are reinstalled inside
+# the image, and none of the local state below belongs in it.
+node_modules
+npm-debug.log*
+.pnpm-debug.log*
+
+# Local env / secrets
+*.env
+*.env.local
+.env
+
+# signal-cli runtime state (accounts, attachments, stickers)
+signal-cli-config
+
+# tests and tooling not needed to run the server
+*.test.ts
+vitest.config.*
+coverage
+
+# misc
+.DS_Store
+Dockerfile
+.dockerignore

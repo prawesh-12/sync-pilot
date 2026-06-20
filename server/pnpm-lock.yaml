@@ -29,6 +29,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      tsx:
+        specifier: ^4.20.0
+        version: 4.22.4
     devDependencies:
       '@types/express':
         specifier: ^5.0.0
@@ -36,9 +39,6 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.19.21
-      tsx:
-        specifier: ^4.20.0
-        version: 4.22.4
       typescript:
         specifier: ^5
         version: 5.9.3
