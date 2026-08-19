@@ -162,60 +162,95 @@
     animation: shimmer 1.5s ease-in-out infinite;
 }
 
-@keyframes signal-float {
-    0%,
-    100% {
-        transform: translateY(0) rotate(-4deg);
-    }
-    50% {
-        transform: translateY(-7px) rotate(4deg);
-    }
+/* Prefixed sp-* so the landing palette never collides with the shadcn theme. */
+
+@theme {
+    --color-sp-base: #07070f;
+    --color-sp-raised: #1a1e28;
+    --color-sp-text: #f2ede4;
+    --color-sp-muted: #96897a;
+    --color-sp-cobalt: #6c4de6;
+    --color-sp-amber: #e3a94a;
+    --color-sp-sage: #6fa97d;
 }
 
-@keyframes signal-glow {
-    0%,
-    100% {
-        filter: drop-shadow(0 0 5px rgba(240, 12, 18, 0.45));
-    }
-    50% {
-        filter: drop-shadow(0 0 16px rgba(240, 12, 18, 0.85));
-    }
+@theme inline {
+    --font-display: var(--font-bricolage);
+    --font-body: var(--font-work-sans);
+    --font-mono-tech: var(--font-plex-mono);
 }
 
-@keyframes signal-ping {
-    0% {
-        transform: scale(0.55);
-        opacity: 0.7;
-    }
-    80%,
-    100% {
-        transform: scale(2.1);
+/* Pure CSS so the hero mockup stays a server component. */
+@keyframes sp-bubble-in {
+    from {
         opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-.signal-glyph {
-    animation:
-        signal-float 4s ease-in-out infinite,
-        signal-glow 2.6s ease-in-out infinite;
+.sp-bubble {
+    opacity: 0;
+    animation: sp-bubble-in 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.signal-ring {
-    border: 2px solid rgba(240, 12, 18, 0.55);
-    animation: signal-ping 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+.sp-bubble-1 {
+    animation-delay: 300ms;
 }
 
-.signal-ring-delayed {
-    animation-delay: 1.3s;
+.sp-bubble-2 {
+    animation-delay: 540ms;
+}
+
+.sp-bubble-3 {
+    animation-delay: 780ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .signal-glyph {
+    .sp-bubble {
         animation: none;
-        filter: drop-shadow(0 0 10px rgba(240, 12, 18, 0.6));
-    }
-    .signal-ring {
-        display: none;
+        opacity: 1;
+        transform: none;
     }
 }
 
+/* FAQ accordion reveal — minimal, and disabled under reduced motion. */
+@keyframes sp-accordion-down {
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--radix-accordion-content-height);
+    }
+}
+
+@keyframes sp-accordion-up {
+    from {
+        height: var(--radix-accordion-content-height);
+    }
+    to {
+        height: 0;
+    }
+}
+
+.sp-accordion-content {
+    overflow: hidden;
+}
+
+.sp-accordion-content[data-state="open"] {
+    animation: sp-accordion-down 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sp-accordion-content[data-state="closed"] {
+    animation: sp-accordion-up 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-accordion-content[data-state="open"],
+    .sp-accordion-content[data-state="closed"] {
+        animation: none;
+    }
+}
