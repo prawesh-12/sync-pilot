@@ -17,10 +17,10 @@ export async function DashboardRecentRuns({ userId }: DashboardRecentRunsProps) 
   const countsByRun = await buildCountsByRun(recentRuns.map((run) => run.id));
 
   return (
-    <div className="flex w-full flex-col rounded-2xl border border-[#A089E6]/15 bg-white/4 p-4">
+    <div className="flex w-full flex-col rounded-2xl border border-white/8 bg-white/4 p-4">
       <div className="shrink-0">
-        <h2 className="text-lg font-semibold text-white">Last 10 Runs</h2>
-        <p className="mt-0.5 text-xs text-gray-400">Most recent agent executions.</p>
+        <h2 className="sp-h3 text-sp-text">Last 10 Runs</h2>
+        <p className="mt-0.5 text-xs text-sp-muted">Most recent agent executions.</p>
       </div>
 
       {recentRuns.length ? (
@@ -34,7 +34,7 @@ export async function DashboardRecentRuns({ userId }: DashboardRecentRunsProps) 
           ))}
         </div>
       ) : (
-        <p className="mt-4 shrink-0 rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-gray-600">
+        <p className="mt-4 shrink-0 rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-sp-muted">
           No agent runs yet.
         </p>
       )}
@@ -63,14 +63,14 @@ function RunCard({
   decisions: DecisionCount[];
 }) {
   return (
-    <div className="rounded-xl border border-[#A089E6]/10 bg-white/3 px-3 py-2">
+    <div className="rounded-xl border border-white/8 bg-white/3 px-3 py-2">
       <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-        <p className="text-sm font-medium text-white">
+        <p className="text-sm font-medium text-sp-text">
           {new Date(run.ranAt).toLocaleString()}
         </p>
         <span className={getStatusClass(run.status)}>{run.status}</span>
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">
+      <p className="mt-0.5 text-xs text-sp-muted">
         Emails found: {run.emailsFound} • Summaries sent: {run.summariesSent} •
         Tokens: {formatNumber(run.totalTokens)}
       </p>
@@ -88,7 +88,7 @@ function DecisionBreakdown({ decisions }: { decisions: DecisionCount[] }) {
     .map((entry) => `${entry.count} ${getDecisionLabel(entry.decision)}`)
     .join(" · ");
 
-  return <p className="mt-0.5 text-xs text-gray-600">{summary}</p>;
+  return <p className="mt-0.5 text-xs text-sp-muted">{summary}</p>;
 }
 
 function getStatusClass(status: RunRow["status"]) {

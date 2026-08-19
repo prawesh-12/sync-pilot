@@ -1,45 +1,62 @@
 import { ArrowRight } from "lucide-react";
 import { PendingLink } from "@/components/pending-link";
+import { GmailMark, SignalMark } from "@/components/landing/brand-marks";
 import { ONBOARDING_STEPS } from "@/components/landing/landing-content";
-import { Meta } from "@/components/landing/product-surface";
+import { ICON_SIZE_SM, ICON_STROKE } from "@/components/landing/landing-icons";
+import { Container, Label, Section } from "@/components/landing/layout-primitives";
 import { landingPrimaryButton } from "@/components/landing/landing-button";
 
-const ARROW_SIZE = 15;
-
-function SetupStep({ name, detail }: { name: string; detail: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-white/7 py-4">
-      <div>
-        <p className="text-base text-sp-text">{name}</p>
-        <p className="mt-0.5 text-xs text-sp-muted">{detail}</p>
-      </div>
-      <Meta className="shrink-0 tracking-[0.12em] uppercase">Not connected</Meta>
-    </div>
-  );
-}
+const MARK_SIZE = 20;
+const HEADING_ID = "start-heading";
 
 export function StartSection() {
   return (
-    <section className="px-5 pt-8 pb-20 sm:px-6 md:pt-12 md:pb-28">
-      <div className="mx-auto w-full max-w-md">
-        <h2 className="font-display text-2xl font-semibold tracking-tight">
+    // No panel of its own: the last snap stop pairs this call to action with
+    // the footer, and that panel is composed in app/page.tsx. Named because it
+    // sits outside <main>, so the footer below keeps its contentinfo landmark.
+    <Section aria-labelledby={HEADING_ID}>
+      <Container>
+        <h2 id={HEADING_ID} className="sp-h2 sp-measure text-sp-text">
           Two connections, then it runs.
         </h2>
-        <div className="mt-7">
+
+        <ul className="mt-12 flex flex-col gap-3">
           {ONBOARDING_STEPS.map((step) => (
-            <SetupStep key={step.name} name={step.name} detail={step.detail} />
+            <li
+              key={step.number}
+              className="sp-surface-1 flex flex-wrap items-center gap-4 px-6 py-4"
+            >
+              <Label className="shrink-0 text-sp-cobalt">{step.number}</Label>
+              <span className="shrink-0">
+                {step.system === "gmail" ? (
+                  <GmailMark size={MARK_SIZE} />
+                ) : (
+                  <SignalMark size={MARK_SIZE} />
+                )}
+              </span>
+              <span className="sp-body w-40 shrink-0 text-sp-text">{step.name}</span>
+              <span className="sp-body min-w-0 flex-1 text-sp-muted">
+                {step.detail}
+              </span>
+              <Label className="shrink-0 normal-case tracking-[0.04em]">
+                {step.time}
+              </Label>
+            </li>
           ))}
-        </div>
-        <div className="mt-7 flex flex-wrap items-center gap-4">
+        </ul>
+
+        <div className="mt-12 flex flex-wrap items-center gap-6">
           <PendingLink href="/dashboard" className={landingPrimaryButton}>
-            Get Started
-            <ArrowRight size={ARROW_SIZE} strokeWidth={2.2} aria-hidden="true" />
+            Get started
+            <ArrowRight
+              size={ICON_SIZE_SM}
+              strokeWidth={ICON_STROKE}
+              aria-hidden="true"
+            />
           </PendingLink>
-          <span className="text-sm text-sp-muted">
-            Free to use today.
-          </span>
+          <span className="sp-body text-sp-muted">Free to start. No card needed.</span>
         </div>
-      </div>
-    </section>
+      </Container>
+    </Section>
   );
 }

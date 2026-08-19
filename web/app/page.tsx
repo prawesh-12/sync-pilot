@@ -1,29 +1,21 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Work_Sans } from "next/font/google";
 import { HERO_SUMMARY } from "@/components/landing/landing-content";
-import { ActivitySection } from "@/components/landing/activity-section";
-import { DecisionSection } from "@/components/landing/decision-section";
-import { JourneySection } from "@/components/landing/journey-section";
-import { LandingBackdrop } from "@/components/landing/landing-backdrop";
+import { CommandsSection } from "@/components/landing/commands-section";
+import { DecisionsSection } from "@/components/landing/decisions-section";
+import { FaqSection } from "@/components/landing/faq-section";
+import { HowItWorksSection } from "@/components/landing/how-it-works-section";
+import { LandingBackdrop } from "@/components/site-backdrop";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingNav } from "@/components/landing/landing-nav";
-import { QuestionsSection } from "@/components/landing/questions-section";
-import { SignalSection } from "@/components/landing/signal-section";
+import { Panel } from "@/components/landing/layout-primitives";
+import { SectionIndicator } from "@/components/landing/section-indicator";
+import { ScrollSnap } from "@/components/landing/scroll-snap";
+import { PricingSection } from "@/components/landing/pricing-section";
 import { StartSection } from "@/components/landing/start-section";
+import { WhySection } from "@/components/landing/why-section";
 
-const body = Work_Sans({
-  subsets: ["latin"],
-  variable: "--font-work-sans",
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-plex-mono",
-  weight: ["400", "500"],
-});
-
-const PAGE_TITLE = "SyncPilot — reply “send” to run your inbox";
+const PAGE_TITLE = "SyncPilot: reply “send” to run your inbox";
 // Not designed yet, so link shares currently fall back to no preview image.
 const OG_IMAGE_PATH = "/og.png";
 const OG_IMAGE_WIDTH = 1200;
@@ -67,23 +59,38 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div
-      className={`${body.className} ${body.variable} ${mono.variable} relative flex flex-1 flex-col bg-sp-base text-sp-text`}
-    >
+    <div className="relative flex flex-1 flex-col">
+      {/* Reveals only hide themselves once this lands, so a browser without JS
+          or without IntersectionObserver shows every section outright. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            "if(typeof IntersectionObserver!=='undefined'){document.documentElement.classList.add('sp-js')}",
+        }}
+      />
+      <ScrollSnap />
+      <SectionIndicator />
       <LandingBackdrop />
       <LandingNav />
 
       <main className="relative z-10 flex-1">
         <LandingHero />
-        <JourneySection />
-        <DecisionSection />
-        <SignalSection />
-        <ActivitySection />
-        <QuestionsSection />
-        <StartSection />
+        <WhySection />
+        <HowItWorksSection />
+        <CommandsSection />
+        <DecisionsSection />
+        <PricingSection />
+        <FaqSection />
       </main>
 
-      <LandingFooter />
+      {/* The page's last snap stop: the call to action and the footer share
+          one panel, because a footer on its own is not worth a scroll of its
+          own. It sits outside <main> so the footer keeps its contentinfo
+          landmark, which a footer nested in <main> would lose. */}
+      <Panel end label="Get started" className="relative z-10">
+        <StartSection />
+        <LandingFooter />
+      </Panel>
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
 import {
   LogIn,
   Mail,
@@ -12,11 +11,7 @@ import {
 import { BrandLogo } from "@/components/brand-logo";
 import { LandingAuth } from "@/components/landing-auth";
 import { SiteFooter } from "@/components/site-footer";
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
+import { SiteBackdrop } from "@/components/site-backdrop";
 
 export const metadata: Metadata = {
   title: "How to use — SyncPilot",
@@ -71,69 +66,64 @@ const steps: Step[] = [
 export default function HowToUsePage() {
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-[#A089E6]/10 bg-[#07070f]/90 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:gap-4 sm:px-6">
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-sp-base">
+        <div className="sp-container flex items-center justify-between gap-6 py-4">
           <BrandLogo />
           <LandingAuth />
         </div>
       </header>
 
-      <main
-        className={`${dmSans.className} relative flex flex-1 flex-col overflow-x-hidden bg-[#07070f] text-white`}
-      >
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,#271A58_0%,transparent_70%)]" />
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(#A089E620_1px,transparent_1px)] bg-size-[24px_24px]" />
+      <main className="relative flex flex-1 flex-col overflow-x-hidden">
+        <SiteBackdrop />
 
-        <div className="relative z-10 mx-auto w-full max-w-2xl px-6 py-14 sm:py-20">
-          <header className="mb-12 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              How to use SyncPilot
-            </h1>
-            <p className="mx-auto mt-3 max-w-md text-sm text-gray-400">
-              Connect your inbox to Signal and start receiving AI summaries in six
-              quick steps.
-            </p>
-          </header>
+        <div className="sp-container relative z-10 py-16 sm:py-24">
+          <div className="mx-auto w-full max-w-2xl">
+            <header className="mb-12 text-center">
+              <h1 className="sp-h2 text-sp-text">How to use SyncPilot</h1>
+              <p className="sp-body mx-auto mt-4 max-w-md text-sp-muted">
+                Connect your inbox to Signal and start receiving AI summaries in six
+                quick steps.
+              </p>
+            </header>
 
-          <ol className="space-y-0">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isLast = index === steps.length - 1;
+            <ol className="space-y-0">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isLast = index === steps.length - 1;
 
-              return (
-                <li
-                  key={step.title}
-                  className="relative flex gap-5 pb-8 last:pb-0"
-                >
-                  {!isLast ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-5 top-12 bottom-0 w-px bg-gradient-to-b from-[#A089E6]/35 to-[#A089E6]/5"
-                    />
-                  ) : null}
-
-                  <div className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-[#8b6fd4] bg-[#6c4de6] text-sm font-bold text-[#f0eeff] shadow-md shadow-black/20">
-                    {index + 1}
-                  </div>
-
-                  <div className="flex-1 rounded-2xl border border-[#A089E6]/15 bg-white/4 p-5 transition-colors hover:border-[#A089E6]/40">
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        className="size-5 shrink-0 text-[#A089E6]"
+                return (
+                  <li
+                    key={step.title}
+                    className="relative flex gap-5 pb-8 last:pb-0"
+                  >
+                    {!isLast ? (
+                      <span
                         aria-hidden="true"
+                        className="absolute left-5 top-12 bottom-0 w-px bg-gradient-to-b from-sp-cobalt/35 to-sp-cobalt/5"
                       />
-                      <h2 className="text-base font-semibold text-white">
-                        {step.title}
-                      </h2>
+                    ) : null}
+
+                    <div className="sp-label relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-[#8b6fd4] bg-sp-cobalt text-[#f0eeff] shadow-md shadow-black/20">
+                      {index + 1}
                     </div>
-                    <p className="mt-1.5 text-sm leading-relaxed text-gray-400">
-                      {step.description}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+
+                    <div className="sp-surface-1 sp-hover-lift flex-1 p-5">
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          className="size-5 shrink-0 text-sp-cobalt"
+                          aria-hidden="true"
+                        />
+                        <h2 className="sp-h3 text-sp-text">{step.title}</h2>
+                      </div>
+                      <p className="sp-body mt-2 text-sp-muted">
+                        {step.description}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         </div>
       </main>
 

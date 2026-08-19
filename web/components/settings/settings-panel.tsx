@@ -6,6 +6,7 @@ import { getGmailAccounts, getSignalIntegration } from "@/db/queries";
 import { buildSignalDeviceName } from "@/features/signal/signal";
 import { GmailAccountsCard } from "@/components/settings/gmail-accounts-card";
 import { SignalIntegrationCard } from "@/components/settings/signal-card";
+import { SiteBackdrop } from "@/components/site-backdrop";
 import {
   disconnectSignalAction,
   removeGmailAccountAction,
@@ -78,22 +79,27 @@ export async function SettingsPanel({
   );
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-65px)] w-full max-w-4xl flex-col gap-6 px-4 py-10 sm:px-6">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage connected integrations.
-          </p>
-        </div>
-        <Button asChild className={ctaButtonTheme}>
-          <PendingLink href="/dashboard">Back to dashboard</PendingLink>
-        </Button>
-      </section>
+    <main className="relative flex min-h-[calc(100vh-65px)] flex-1 flex-col">
+      <SiteBackdrop />
 
-      {banners}
-      {emailSection}
-      {signalSection}
+      {/* Narrower than the shared container, but on its gutters. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10 sm:px-10">
+        <section className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="sp-h3 text-sp-text">Settings</h1>
+            <p className="sp-body mt-1 text-sp-muted">
+              Manage connected integrations.
+            </p>
+          </div>
+          <Button asChild className={ctaButtonTheme}>
+            <PendingLink href="/dashboard">Back to dashboard</PendingLink>
+          </Button>
+        </section>
+
+        {banners}
+        {emailSection}
+        {signalSection}
+      </div>
     </main>
   );
 }

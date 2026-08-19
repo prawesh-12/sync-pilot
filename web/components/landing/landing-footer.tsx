@@ -1,50 +1,61 @@
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
+import {
+  FOOTER_LEGAL_LINKS,
+  FOOTER_PRODUCT_LINKS,
+  SIGNAL_DISCLAIMER,
+} from "@/components/landing/landing-content";
+import { Container, Label } from "@/components/landing/layout-primitives";
 
-// Separate from SiteFooter because the app shell still runs on the shadcn theme.
+const linkClass =
+  "sp-focus sp-body rounded-[6px] text-sp-muted transition-colors duration-150 hover:text-sp-text";
+
 export function LandingFooter() {
   return (
-    <footer className="relative z-10 border-t border-sp-text/8">
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-4 px-5 py-8 text-center sm:flex-row sm:justify-between sm:gap-6 sm:text-left">
-        <p className="text-sm text-sp-muted">
-          &copy; {new Date().getFullYear()} SyncPilot AI
-        </p>
+    <footer className="relative z-10 border-t border-white/8">
+      <Container className="py-16">
+        <div className="grid gap-12 md:grid-cols-3">
+          <nav aria-label="Product">
+            <Label>Product</Label>
+            <ul className="mt-4 flex flex-col gap-3">
+              {FOOTER_PRODUCT_LINKS.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className={linkClass}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <nav
-          aria-label="Legal"
-          className="flex items-center gap-2 text-sm text-sp-muted"
-        >
-          <Link
-            href="/privacy"
-            className="rounded-[5px] transition-colors hover:text-sp-text focus-visible:ring-2 focus-visible:ring-sp-amber focus-visible:ring-offset-2 focus-visible:ring-offset-sp-base focus-visible:outline-none"
-          >
-            Privacy
-          </Link>
-          <span aria-hidden="true" className="text-sp-muted/40">
-            &middot;
-          </span>
-          <Link
-            href="/terms"
-            className="rounded-[5px] transition-colors hover:text-sp-text focus-visible:ring-2 focus-visible:ring-sp-amber focus-visible:ring-offset-2 focus-visible:ring-offset-sp-base focus-visible:outline-none"
-          >
-            Terms
-          </Link>
-          <span aria-hidden="true" className="text-sp-muted/40">
-            &middot;
-          </span>
-          <Link
-            href="/how-to-use"
-            className="rounded-[5px] transition-colors hover:text-sp-text focus-visible:ring-2 focus-visible:ring-sp-amber focus-visible:ring-offset-2 focus-visible:ring-offset-sp-base focus-visible:outline-none"
-          >
-            Docs
-          </Link>
-        </nav>
+          <nav aria-label="Legal">
+            <Label>Legal</Label>
+            <ul className="mt-4 flex flex-col gap-3">
+              {FOOTER_LEGAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className={linkClass}>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <p className="flex items-center gap-1.5 text-sm text-sp-muted">
-          Built with
-          <Heart size={13} aria-hidden="true" className="text-sp-amber" />
-          for Signal users
-        </p>
+          <div>
+            <BrandLogo />
+            <p className="sp-body sp-measure mt-4 text-sp-muted">
+              {SIGNAL_DISCLAIMER}
+            </p>
+          </div>
+        </div>
+      </Container>
+
+      <div className="border-t border-white/8">
+        <Container className="py-6">
+          <Label className="normal-case tracking-[0.04em]">
+            &copy; {new Date().getFullYear()} SyncPilot AI
+          </Label>
+        </Container>
       </div>
     </footer>
   );

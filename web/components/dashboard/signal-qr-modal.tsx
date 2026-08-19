@@ -103,7 +103,7 @@ export function SignalQrModal() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
                     <div className="w-full max-w-sm rounded-2xl border border-border/80 bg-[#0b0b12] p-4 shadow-2xl">
                         <div className="mb-3 flex items-center justify-between gap-3">
-                            <h3 className="text-sm font-semibold text-white">Scan Signal QR</h3>
+                            <h3 className="text-sm font-semibold text-sp-text">Scan Signal QR</h3>
                             <Button
                                 type="button"
                                 size="sm"
