@@ -3,6 +3,7 @@ import { ctaButtonTheme } from "@/components/cta-button-class";
 import { PendingLink } from "@/components/pending-link";
 import { SiteFooter } from "@/components/site-footer";
 import { cn } from "@/lib/utils";
+import { SiteBackdrop } from "@/components/site-backdrop";
 
 type LegalPageShellProps = {
   title: string;
@@ -17,8 +18,8 @@ export function LegalPageShell({
 }: LegalPageShellProps) {
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-[#A089E6]/10 bg-[#07070f]/90 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-sp-base">
+        <div className="sp-container flex items-center justify-between gap-6 py-4">
           <BrandLogo />
           <PendingLink
             href="/dashboard"
@@ -29,22 +30,24 @@ export function LegalPageShell({
         </div>
       </header>
 
-      <main className="relative flex flex-1 flex-col bg-[#07070f] text-white">
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,#271A58_0%,transparent_70%)]" />
-        <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(#A089E620_1px,transparent_1px)] bg-size-[24px_24px]" />
+      <main className="relative flex flex-1 flex-col">
+        <SiteBackdrop />
 
-        <article className="relative z-10 mx-auto w-full max-w-3xl px-6 py-12 sm:px-8 sm:py-16">
-          <header className="mb-10 border-b border-[#A089E6]/15 pb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {title}
-            </h1>
-            <p className="mt-3 text-sm text-gray-400">
-              Last updated: {lastUpdated}
-            </p>
-          </header>
+        <article className="sp-container relative z-10 py-16 sm:py-24">
+          <div className="mx-auto w-full max-w-3xl">
+            <header className="mb-12 border-b border-white/8 pb-8">
+              <h1 className="sp-h2 text-sp-text">{title}</h1>
+              <p className="sp-label mt-4 block normal-case tracking-[0.04em] text-sp-muted">
+                Last updated: {lastUpdated}
+              </p>
+            </header>
 
-          <div className="space-y-8 text-sm leading-relaxed text-gray-300 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-white [&_h2]:not-first:mt-2 [&_li]:ml-5 [&_li]:list-disc [&_p+p]:mt-3 [&_ul]:space-y-2">
-            {children}
+            {/* Headings inside the prose use the display face at sp-h3's size.
+                An arbitrary variant can only carry Tailwind utilities, so the
+                sp-* class cannot be applied through one. */}
+            <div className="sp-body space-y-8 text-sp-muted [&_h2]:font-display [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:font-semibold [&_h2]:text-sp-text [&_h2]:mb-3 [&_h2]:not-first:mt-10 [&_li]:ml-5 [&_li]:list-disc [&_p+p]:mt-3 [&_ul]:space-y-2">
+              {children}
+            </div>
           </div>
         </article>
       </main>

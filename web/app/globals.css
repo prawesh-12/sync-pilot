@@ -8,7 +8,9 @@
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --font-sans: var(--font-sans);
-    --font-mono: var(--font-geist-mono);
+    /* Plex Mono is the product's one monospace, so shadcn's font-mono and the
+       sp-* label/code scale resolve to the same face. */
+    --font-mono: var(--font-plex-mono);
     --font-heading: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -162,60 +164,792 @@
     animation: shimmer 1.5s ease-in-out infinite;
 }
 
-@keyframes signal-float {
-    0%,
-    100% {
-        transform: translateY(0) rotate(-4deg);
-    }
-    50% {
-        transform: translateY(-7px) rotate(4deg);
+/* Prefixed sp-* so the landing palette never collides with the shadcn theme. */
+
+@theme {
+    --color-sp-base: #07070f;
+    --color-sp-raised: #1a1e28;
+    --color-sp-text: #f2ede4;
+    --color-sp-muted: #96897a;
+    --color-sp-cobalt: #6c4de6;
+    --color-sp-amber: #e3a94a;
+    --color-sp-sage: #6fa97d;
+    /* Two more accents so a set of icons can carry five distinct hues. The
+       page ground is a violet-tinted near-black, so a violet-only icon set
+       sinks into it; sky and lilac widen the range without leaving the
+       family. Lilac is the violet already used for focus rings and links,
+       promoted to a token now that it is part of the palette proper. */
+    --color-sp-sky: #5ec8e5;
+    --color-sp-lilac: #a089e6;
+}
+
+@theme inline {
+    --font-display: var(--font-bricolage);
+    /* Work Sans is bound to --font-sans at the root, for every route. */
+    --font-body: var(--font-sans);
+    --font-mono-tech: var(--font-plex-mono);
+}
+
+/* ---------------------------------------------------------------------------
+   Landing design system. One container, one spacing scale, one type scale,
+   three surface levels, one reveal. Every landing section consumes these;
+   nothing declares its own max width, offset, or one-off gap.
+   --------------------------------------------------------------------------- */
+
+:root {
+    --sp-container: 1200px;
+    --sp-gutter: 24px;
+    --sp-gutter-lg: 40px;
+
+    --sp-surface-1-bg: rgba(255, 255, 255, 0.03);
+    --sp-surface-1-border: rgba(255, 255, 255, 0.07);
+    --sp-surface-2-bg: rgba(255, 255, 255, 0.055);
+    --sp-surface-2-border: rgba(255, 255, 255, 0.11);
+    --sp-surface-2-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+        0 8px 24px rgba(0, 0, 0, 0.25);
+
+    --sp-lit-border: rgba(108, 77, 230, 0.35);
+    --sp-lit-glow: 0 0 32px rgba(108, 77, 230, 0.2);
+
+    --sp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --sp-reveal-duration: 500ms;
+}
+
+/* Anchor links from the nav land below the sticky bar rather than under it. */
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
     }
 }
 
-@keyframes signal-glow {
-    0%,
-    100% {
-        filter: drop-shadow(0 0 5px rgba(240, 12, 18, 0.45));
-    }
-    50% {
-        filter: drop-shadow(0 0 16px rgba(240, 12, 18, 0.85));
+/* Container ------------------------------------------------------------- */
+
+.sp-container {
+    width: 100%;
+    max-width: var(--sp-container);
+    margin-inline: auto;
+    padding-inline: var(--sp-gutter);
+}
+
+@media (min-width: 768px) {
+    .sp-container {
+        padding-inline: var(--sp-gutter-lg);
     }
 }
 
-@keyframes signal-ping {
-    0% {
-        transform: scale(0.55);
-        opacity: 0.7;
+/* Type scale ------------------------------------------------------------ */
+
+.sp-display {
+    font-family: var(--font-bricolage), var(--font-sans), sans-serif;
+    font-size: clamp(2.75rem, 5vw, 4.25rem);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+}
+
+.sp-h2 {
+    font-family: var(--font-bricolage), var(--font-sans), sans-serif;
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+}
+
+.sp-h3 {
+    font-family: var(--font-bricolage), var(--font-sans), sans-serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.sp-lead {
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.sp-body {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.65;
+}
+
+.sp-label {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.sp-code {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* Line length cap for anything that runs as prose. */
+.sp-measure {
+    max-width: 62ch;
+}
+
+/* Surfaces -------------------------------------------------------------- */
+
+.sp-surface-1 {
+    background: var(--sp-surface-1-bg);
+    border: 1px solid var(--sp-surface-1-border);
+    border-radius: 12px;
+}
+
+.sp-surface-2 {
+    background: var(--sp-surface-2-bg);
+    border: 1px solid var(--sp-surface-2-border);
+    border-radius: 14px;
+    box-shadow: var(--sp-surface-2-shadow);
+}
+
+/* The single "this is what is live right now" treatment. Only one element on
+   screen wears it at a time. */
+.sp-lit {
+    background: var(--sp-surface-2-bg);
+    border: 1px solid var(--sp-lit-border);
+    border-radius: 14px;
+    box-shadow: var(--sp-surface-2-shadow), var(--sp-lit-glow);
+}
+
+.sp-hover-lift {
+    transition: transform 150ms var(--sp-ease), background-color 150ms
+        var(--sp-ease), border-color 150ms var(--sp-ease);
+}
+
+.sp-hover-lift:hover {
+    transform: translateY(-2px);
+    background: var(--sp-surface-2-bg);
+    border-color: var(--sp-surface-2-border);
+}
+
+/* Stroke draw-in -----------------------------------------------------------
+   Icons and connectors arrive by drawing themselves rather than by fading.
+   Every path carries pathLength="1", so one keyframe covers geometry of any
+   real length and a whole set can share a single timing.
+
+   The resting state is the finished drawing, as everywhere else on this page.
+   Every rule that hides, mutes or delays lives inside the no-preference query
+   below, so reduced motion is not a set of overrides to be kept in sync — the
+   sequencing simply never applies, and the art is drawn and lit from the
+   start. The same holds without JavaScript, since .sp-js gates all of it.
+   ------------------------------------------------------------------------- */
+
+@keyframes sp-draw {
+    from {
+        stroke-dashoffset: 1;
     }
-    80%,
-    100% {
-        transform: scale(2.1);
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* A short dash chased along the whole length of a connector. */
+@keyframes sp-pulse-travel {
+    from {
+        stroke-dashoffset: 1;
+        opacity: 0;
+    }
+    12% {
+        opacity: 1;
+    }
+    88% {
+        opacity: 1;
+    }
+    to {
+        stroke-dashoffset: -0.18;
         opacity: 0;
     }
 }
 
-.signal-glyph {
-    animation:
-        signal-float 4s ease-in-out infinite,
-        signal-glow 2.6s ease-in-out infinite;
+/* Line art at 1.5 stroke reads thin on a dark ground. A bloom in currentColor
+   gives it presence without thickening the stroke. */
+.sp-draw {
+    filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 38%, transparent));
 }
 
-.signal-ring {
-    border: 2px solid rgba(240, 12, 18, 0.55);
-    animation: signal-ping 2.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+/* The pulse is pure decoration: it never shows unless it is travelling. */
+.sp-pulse {
+    opacity: 0;
+    stroke-dasharray: 0.18 0.82;
 }
 
-.signal-ring-delayed {
-    animation-delay: 1.3s;
+@media (prefers-reduced-motion: no-preference) {
+    .sp-js [data-draw] .sp-draw > * {
+        stroke-dasharray: 1;
+    }
+
+    .sp-js [data-draw="false"] .sp-draw > * {
+        stroke-dashoffset: 1;
+        /* A round cap on a zero-length dash still paints a dot, which
+           speckles the diagram before it starts. */
+        stroke-linecap: butt;
+    }
+
+    .sp-js [data-draw="true"] .sp-draw > * {
+        animation: sp-draw 520ms var(--sp-ease) both var(--sp-draw-delay, 0ms);
+    }
+
+    .sp-js [data-draw="true"] .sp-pulse {
+        animation: sp-pulse-travel 900ms var(--sp-ease) both
+            var(--sp-draw-delay, 0ms);
+    }
+
+    /* Colour only: the drawing carries the motion. */
+    .sp-step,
+    .sp-outcome {
+        transition: color 320ms var(--sp-ease), border-color 320ms
+                var(--sp-ease), background-color 320ms var(--sp-ease),
+            box-shadow 320ms var(--sp-ease);
+        transition-delay: var(--sp-draw-delay, 0ms);
+    }
+
+    .sp-js [data-draw="false"] .sp-step,
+    .sp-js [data-draw="false"] .sp-outcome {
+        color: var(--color-sp-muted);
+        border-color: rgba(255, 255, 255, 0.05);
+        box-shadow: none;
+    }
+}
+
+/* Focus ----------------------------------------------------------------- */
+
+.sp-focus {
+    outline: none;
+}
+
+.sp-focus:focus-visible {
+    outline: 2px solid #a089e6;
+    outline-offset: 2px;
+}
+
+/* Scroll reveal --------------------------------------------------------- */
+
+/* Hidden state is gated on .sp-js so the page still reads with JS disabled. */
+.sp-js .sp-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+.sp-reveal {
+    transition: opacity var(--sp-reveal-duration) var(--sp-ease),
+        transform var(--sp-reveal-duration) var(--sp-ease);
+    transition-delay: var(--sp-delay, 0ms);
+    will-change: opacity, transform;
+}
+
+.sp-js .sp-reveal[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+}
+
+/* Tier 1 stage --------------------------------------------------------------
+   The resting state of every element here is its FINISHED state. Nothing is
+   hidden unless a moment is genuinely playing, which is what `data-playing`
+   on the stage reports. So a failed script, a stalled loop, or a browser with
+   no JavaScript all leave the section fully readable rather than blank.
+   -------------------------------------------------------------------------- */
+
+.sp-stage [data-step] {
+    transition: opacity 260ms var(--sp-ease), transform 260ms var(--sp-ease);
+}
+
+.sp-js .sp-stage[data-playing="true"] [data-step][data-on="false"] {
+    opacity: 0;
+}
+
+.sp-js
+    .sp-stage[data-playing="true"]
+    [data-step][data-lift="true"][data-on="false"] {
+    transform: translateY(16px);
+}
+
+/* Journey cards are never absent, only unlit, so the whole journey is legible
+   from the first frame. */
+.sp-stage [data-card] {
+    transition: opacity 260ms var(--sp-ease), transform 260ms var(--sp-ease),
+        border-color 260ms var(--sp-ease);
+}
+
+.sp-js .sp-stage[data-playing="true"] [data-card][data-on="false"] {
+    opacity: 0.45;
+    transform: translateY(6px);
+}
+
+/* The one lit element. Its glow rides a separate layer so only opacity moves. */
+.sp-glow {
+    opacity: 1;
+    transition: opacity 400ms var(--sp-ease);
+}
+
+.sp-js .sp-stage[data-playing="true"] .sp-glow[data-on="false"] {
+    opacity: 0;
+}
+
+/* Options the agent looked at and put down. They rest dimmed, because that is
+   how the decision ends up. */
+.sp-stage [data-role="rejected"] {
+    opacity: 0.4;
+    transition: opacity 300ms var(--sp-ease);
+}
+
+.sp-js .sp-stage[data-playing="true"] [data-role="rejected"][data-dim="false"] {
+    opacity: 1;
+}
+
+/* The rail's three layers -------------------------------------------------
+   segments (z1), packet (z2), node wells (z3). The wells are opaque and the
+   track is drawn in separate pieces, so no line ever runs behind a node.
+   ------------------------------------------------------------------------ */
+
+/* Each segment fills on its own, over the same 600ms the packet takes to
+   cross it. */
+.sp-segment-fill {
+    transition: stroke-dashoffset 350ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Traffic along a leg the message has already crossed. One dash period is 11.5
+   units, so shifting the offset by exactly that per iteration loops seamlessly;
+   negative offset runs the dots toward the next node rather than back.
+
+   It runs only while the stage is playing, so it stops with everything else
+   when the section is off screen or a reader is pointing at it. */
+@keyframes sp-segment-flow {
+    from {
+        stroke-dashoffset: 0;
+    }
+    to {
+        stroke-dashoffset: -11.5;
+    }
+}
+
+.sp-segment-flow {
+    opacity: 0;
+    transition: opacity 320ms var(--sp-ease);
+}
+
+.sp-segment-flow[data-on="true"] {
+    opacity: 1;
+}
+
+.sp-js .sp-stage[data-playing="true"] .sp-segment-flow[data-on="true"] {
+    animation: sp-segment-flow 1100ms linear infinite;
+}
+
+/* Travel eases out of one node and into the next. The per-property durations
+   are set inline, because travel animates and repositioning does not. */
+.sp-packet {
+    opacity: 0;
+    transition-property: transform, opacity;
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1), ease-out;
+}
+
+.sp-packet[data-on="true"] {
+    opacity: 1;
+}
+
+/* The chip rides over the track, so its ground must be opaque like a node
+   well. Base colour first, the tint over it as a background-image — a flat
+   15% cobalt fill let the segment line read through the label. */
+.sp-packet-chip {
+    background-color: var(--color-sp-base);
+    background-image: linear-gradient(
+        rgba(108, 77, 230, 0.15),
+        rgba(108, 77, 230, 0.15)
+    );
+}
+
+/* The well never changes opacity: only what sits inside it does. */
+.sp-node-content {
+    opacity: 1;
+    transition: opacity 400ms var(--sp-ease);
+}
+
+.sp-js .sp-stage[data-playing="true"] .sp-node-content[data-on="false"] {
+    opacity: 0.45;
+}
+
+.sp-node {
+    border-color: rgba(108, 77, 230, 0.45);
+    transition: border-color 400ms var(--sp-ease);
+}
+
+.sp-node[data-done="true"] {
+    border-color: rgba(111, 169, 125, 0.5);
+}
+
+.sp-js .sp-stage[data-playing="true"] .sp-node[data-on="false"] {
+    border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* One soft ring that expands and fades as the node lights. */
+@keyframes sp-node-ring {
+    from {
+        opacity: 0.65;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(1.9);
+    }
+}
+
+.sp-node-ring {
+    opacity: 0;
+}
+
+.sp-node-ring[data-on="true"] {
+    animation: sp-node-ring 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Signal thread bubbles ------------------------------------------------- */
+
+@keyframes sp-bubble-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sp-bubble-in {
+    animation: sp-bubble-in 240ms var(--sp-ease) both;
+}
+
+/* The one "this is live" tell, on the activity panel's status dot. */
+@keyframes sp-breathe {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.sp-breathe {
+    animation: sp-breathe 2.4s ease-in-out infinite;
+}
+
+/* Activity log rows ----------------------------------------------------- */
+
+@keyframes sp-log-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* No fill-mode: the row must fall back to class-driven opacity so the
+   oldest row can fade out via transition. */
+.sp-log-in {
+    animation: sp-log-in 400ms var(--sp-ease);
+}
+
+.sp-log-out {
+    opacity: 0.25;
+    transition: opacity 400ms var(--sp-ease);
+}
+
+/* FAQ accordion --------------------------------------------------------- */
+
+@keyframes sp-accordion-down {
+    from {
+        height: 0;
+    }
+    to {
+        height: var(--radix-accordion-content-height);
+    }
+}
+
+@keyframes sp-accordion-up {
+    from {
+        height: var(--radix-accordion-content-height);
+    }
+    to {
+        height: 0;
+    }
+}
+
+.sp-accordion-content {
+    overflow: hidden;
+}
+
+.sp-accordion-content[data-state="open"] {
+    animation: sp-accordion-down 240ms var(--sp-ease);
+}
+
+.sp-accordion-content[data-state="closed"] {
+    animation: sp-accordion-up 240ms var(--sp-ease);
+}
+
+/* Reduced motion -------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-reveal,
+    .sp-stage [data-step],
+    .sp-stage [data-card],
+    .sp-glow,
+    .sp-node,
+    .sp-node-content,
+    .sp-node-ring[data-on="true"],
+    .sp-packet,
+    .sp-segment-fill,
+    .sp-segment-flow,
+    .sp-hover-lift,
+    .sp-log-out,
+    .sp-breathe,
+    .sp-accordion-content[data-state="open"],
+    .sp-accordion-content[data-state="closed"],
+    .sp-bubble-in,
+    .sp-log-in {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+    }
+
+    /* Final states, shown straight away. */
+    .sp-js .sp-reveal {
+        opacity: 1;
+        transform: none;
+    }
+
+    /* No packet under reduced motion, and every node already lit. */
+    .sp-packet,
+    .sp-packet[data-on="true"] {
+        opacity: 0;
+    }
+
+    .sp-node-content {
+        opacity: 1;
+    }
+
+    .sp-stage [data-step],
+    .sp-stage [data-card],
+    .sp-glow {
+        opacity: 1;
+        transform: none;
+    }
+
+    .sp-node-ring {
+        animation: none;
+        opacity: 0;
+    }
+
+    .sp-stage [data-role="rejected"] {
+        opacity: 0.4;
+    }
+
+    .sp-hover-lift:hover {
+        transform: none;
+    }
+}
+
+/* Route transitions ------------------------------------------------------
+   One treatment for every route change: the page fades in as a unit and a
+   violet bar runs across the top while it lands.
+   ---------------------------------------------------------------------- */
+
+@keyframes sp-route-enter {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* "backwards" rather than "both" on purpose. A filling transform animation
+   keeps this element a containing block for fixed descendants even once it has
+   finished and the transform computes to none, which would leave the fixed nav
+   and the section indicator scrolling away with the page. Backwards still
+   applies the opening frame before the animation starts, so nothing flashes. */
+.sp-route-enter {
+    animation: sp-route-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.sp-route-progress {
+    transform: scaleX(0);
+    animation: sp-route-progress 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sp-route-progress {
+    0% {
+        transform: scaleX(0);
+    }
+    60% {
+        transform: scaleX(0.7);
+        opacity: 1;
+    }
+    100% {
+        transform: scaleX(1);
+        opacity: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .signal-glyph {
-        animation: none;
-        filter: drop-shadow(0 0 10px rgba(240, 12, 18, 0.6));
+    .sp-route-enter,
+    .sp-route-progress {
+        animation-duration: 0.01ms !important;
     }
-    .signal-ring {
-        display: none;
+
+    .sp-route-enter {
+        opacity: 1;
+        transform: none;
     }
 }
 
+
+/* Panel snapping ----------------------------------------------------------
+   One gesture, one panel. The page is a stack of panels, each one viewport
+   tall, and `scroll-snap-stop: always` is what stops a fast flick from
+   crossing three of them at once.
+
+   Native CSS scroll snap on <html> only. Nothing intercepts the wheel, so
+   keyboard scrolling, Page Down, Home, End, browser find and the back button
+   all keep working.
+   ------------------------------------------------------------------------ */
+
+.sp-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 96px;
+    padding-bottom: 96px;
+}
+
+/* The closing panel carries the footer, which belongs on the bottom edge
+   rather than centred with the call to action above it. */
+.sp-panel-end {
+    justify-content: flex-end;
+    padding-bottom: 0;
+}
+
+html.sp-snap .sp-panel {
+    min-height: 100vh;
+    /* Clears the sticky nav. Deliberately not scroll-margin-top: under
+       mandatory snapping that fights the snap position rather than moving
+       the content out from under the bar. */
+    padding-top: 96px;
+    padding-bottom: 32px;
+    scroll-margin-top: 0;
+}
+
+html.sp-snap .sp-panel-end {
+    padding-bottom: 0;
+}
+
+/* Measured at runtime. A panel taller than the viewport must not become a
+   hard stop, because mandatory snapping would leave its lower half
+   unreachable. */
+html.sp-snap .sp-panel[data-fits="true"] {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+html.sp-snap[data-snap-fit="all"] {
+    scroll-snap-type: y mandatory;
+}
+
+/* One panel overflowed its viewport, so it carries no snap point. Mandatory
+   would then refuse to rest anywhere inside it; proximity still lets a reader
+   stop and read. */
+html.sp-snap[data-snap-fit="partial"] {
+    scroll-snap-type: y proximity;
+}
+
+/* On a shorter laptop the panel's own padding gives first, before any panel
+   overflows and drops the page to proximity. 80px still clears the 71px nav. */
+@media (min-width: 1025px) and (max-height: 880px) {
+    html.sp-snap .sp-panel {
+        padding-top: 80px;
+        padding-bottom: 8px;
+    }
+
+    /* The footer is the most generously padded block on the page, so it is
+       the next thing to give on the closing panel. */
+    html.sp-snap .sp-panel-end footer > .sp-container {
+        padding-block: 40px;
+    }
+}
+
+/* Snapping is for wheel-and-pointer reading on a large screen. Phone and
+   tablet viewports are too short for the content, and touch momentum fights
+   the snap. */
+@media (max-width: 1024px) {
+    html.sp-snap[data-snap-fit] {
+        scroll-snap-type: none;
+    }
+
+    html.sp-snap .sp-panel {
+        min-height: auto;
+        padding-bottom: 96px;
+    }
+
+    html.sp-snap .sp-panel-end {
+        padding-bottom: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.sp-snap[data-snap-fit] {
+        scroll-snap-type: none;
+        scroll-behavior: auto;
+    }
+
+    html.sp-snap .sp-panel {
+        min-height: auto;
+        padding-bottom: 96px;
+    }
+
+    html.sp-snap .sp-panel-end {
+        padding-bottom: 0;
+    }
+}
+
+/* Section indicator ------------------------------------------------------
+   A page that moves a full screen at a time needs to say where you are.
+   ------------------------------------------------------------------------ */
+
+.sp-dot {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.22);
+    transition:
+        width 200ms var(--sp-ease),
+        height 200ms var(--sp-ease),
+        background-color 200ms var(--sp-ease);
+}
+
+.sp-dot-button:hover .sp-dot {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.sp-dot-button[aria-current="true"] .sp-dot {
+    width: 8px;
+    height: 8px;
+    background: #6c4de6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-dot {
+        transition-duration: 0.01ms;
+    }
+}

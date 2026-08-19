@@ -12,8 +12,8 @@ type BrandLogoProps = {
 };
 
 const logoSizes = {
-  sm: { className: "h-7 w-7", width: 28, height: 28 },
-  md: { className: "h-8 w-8", width: 32, height: 32 },
+  sm: { className: "size-6", width: 24, height: 24 },
+  md: { className: "size-7", width: 28, height: 28 },
 } as const;
 
 export function BrandLogo({
@@ -35,7 +35,12 @@ export function BrandLogo({
         priority={size === "md"}
       />
       {showWordmark ? (
-        <span className="whitespace-nowrap text-base font-semibold uppercase tracking-wider text-white sm:text-lg sm:tracking-widest">
+        <span
+          className={cn(
+            "font-display font-semibold tracking-tight whitespace-nowrap text-sp-text",
+            size === "md" ? "text-lg" : "text-base",
+          )}
+        >
           SyncPilot
         </span>
       ) : null}
@@ -43,13 +48,19 @@ export function BrandLogo({
   );
 
   const wrapperClassName = cn(
-    "inline-flex items-center gap-2.5",
+    "inline-flex shrink-0 items-center gap-2.5",
     className,
   );
 
   if (href) {
     return (
-      <Link href={href} className={wrapperClassName}>
+      <Link
+        href={href}
+        className={cn(
+          wrapperClassName,
+          "rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-sp-amber focus-visible:ring-offset-2 focus-visible:ring-offset-sp-base",
+        )}
+      >
         {content}
       </Link>
     );

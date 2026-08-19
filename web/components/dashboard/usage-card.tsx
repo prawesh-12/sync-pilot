@@ -28,16 +28,16 @@ export async function UsageCard({ userId }: UsageCardProps) {
   );
 
   return (
-    <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-4 py-4 sm:px-5">
+    <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/4 px-4 py-4 sm:px-5">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-white">Usage</h2>
-        <span className="text-xs text-gray-400">This month</span>
+        <h2 className="sp-h3 text-sp-text">Usage</h2>
+        <span className="text-xs text-sp-muted">This month</span>
       </div>
 
       <div className="space-y-1.5">
         <div className="flex items-baseline justify-between gap-2 text-sm">
-          <span className="text-gray-400">Tokens</span>
-          <span className="font-medium text-white">
+          <span className="text-sp-muted">Tokens</span>
+          <span className="font-medium text-sp-text">
             {formatNumber(usage.totalTokensUsed)}
             {isPro
               ? " · Unlimited"
@@ -45,19 +45,19 @@ export async function UsageCard({ userId }: UsageCardProps) {
           </span>
         </div>
         {isPro ? null : (
-          <Progress value={usedPercent} className="bg-[#A089E6]/15" />
+          <Progress value={usedPercent} className="bg-sp-cobalt/15" />
         )}
       </div>
 
-      <div className="flex flex-col gap-1 text-xs text-gray-400 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex flex-col gap-1 text-xs text-sp-muted sm:flex-row sm:items-center sm:gap-4">
         <span>
           Emails processed:{" "}
-          <span className="text-gray-200">{formatNumber(usage.emailCount)}</span>
+          <span className="text-sp-text">{formatNumber(usage.emailCount)}</span>
         </span>
-        <span className="hidden text-gray-600 sm:inline">•</span>
+        <span className="hidden text-sp-muted sm:inline">•</span>
         <span>
           Last run:{" "}
-          <span className="text-gray-200">
+          <span className="text-sp-text">
             {lastRun ? formatRelativeTime(lastRun) : "Never"}
           </span>
         </span>

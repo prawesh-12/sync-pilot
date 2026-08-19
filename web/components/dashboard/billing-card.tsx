@@ -15,10 +15,10 @@ export async function BillingCard({ userId }: BillingCardProps) {
   const nextBilling = formatDate(subscription?.currentPeriodEnd ?? null);
 
   return (
-    <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-[#A089E6]/15 bg-white/4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3">
+    <div className="shrink-0 flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5 sm:py-3">
       <div>
-        <h2 className="text-lg font-semibold text-white">Billing</h2>
-        <p className="mt-0.5 text-xs text-gray-400">
+        <h2 className="sp-h3 text-sp-text">Billing</h2>
+        <p className="mt-0.5 text-xs text-sp-muted">
           {isPro ? "Plan: Pro" : "Plan: Free"}
           {isPro && nextBilling ? ` · Next billing: ${nextBilling}` : ""}
         </p>

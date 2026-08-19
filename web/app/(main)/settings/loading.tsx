@@ -33,7 +33,7 @@ export default function SettingsLoading() {
       </section>
 
       <section className="space-y-2">
-        <div className="rounded-xl border border-[#A089E6]/30 bg-[#A089E6]/3">
+        <div className="rounded-xl border border-sp-cobalt/30 bg-sp-cobalt/3">
           <div className="flex flex-row items-start justify-between gap-4 px-6 py-5">
             <div className="space-y-2">
               <Skeleton width="150px" height="22px" />
