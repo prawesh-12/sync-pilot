@@ -1,44 +1,66 @@
+"use client";
+
+import { Fragment, useCallback, useState } from "react";
 import { PendingLink } from "@/components/pending-link";
-import { HERO_SUMMARY } from "@/components/landing/landing-content";
-import { HeroScene } from "@/components/landing/hero-scene";
-import { StatusDot } from "@/components/landing/product-surface";
+import { HERO_PROOF, HERO_SUMMARY } from "@/components/landing/landing-content";
+import { HeroPipeline } from "@/components/landing/hero-pipeline";
+import { HeroTerminal } from "@/components/landing/hero-terminal";
+import { Container, Panel, Section } from "@/components/landing/layout-primitives";
 import {
   landingPrimaryButton,
   landingSecondaryButton,
 } from "@/components/landing/landing-button";
 
 export function LandingHero() {
+  const [isDraftReady, setIsDraftReady] = useState(false);
+  const onDraftReady = useCallback(() => setIsDraftReady(true), []);
+
   return (
-    <section className="mx-auto w-full max-w-6xl px-5 pt-12 pb-16 sm:px-6 sm:pt-20 md:pb-24">
-      <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-20">
-        <div>
-          <p className="flex items-center gap-2 text-sm text-sp-muted">
-            <StatusDot tone="active" breathe />
-            Checks Gmail every 5&ndash;15 minutes
-          </p>
+    <Section>
+      <Panel label="Reply send">
+        <Container>
+          <div className="grid items-center gap-16 lg:grid-cols-12 lg:gap-12">
+            <div className="lg:col-span-7">
+              <h1 className="sp-display text-sp-text">
+                Reply <span className="text-sp-amber">&ldquo;send.&rdquo;</span>
+                <br />
+                That&rsquo;s the whole interface.
+              </h1>
 
-          <h1 className="mt-6 font-display text-4xl leading-[1.08] font-semibold tracking-tight sm:text-5xl">
-            Reply <span className="text-sp-amber">&ldquo;send.&rdquo;</span>
-            <br />
-            That&rsquo;s the whole interface.
-          </h1>
+              <p className="sp-lead sp-measure mt-6 text-sp-muted">
+                {HERO_SUMMARY}
+              </p>
 
-          <p className="mt-5 max-w-sm text-base leading-relaxed text-sp-muted">
-            {HERO_SUMMARY}
-          </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <PendingLink href="/dashboard" className={landingPrimaryButton}>
+                  Get started
+                </PendingLink>
+                <a href="#how-it-works" className={landingSecondaryButton}>
+                  Watch it decide
+                </a>
+              </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <PendingLink href="/dashboard" className={landingPrimaryButton}>
-              Get Started
-            </PendingLink>
-            <a href="#decision" className={landingSecondaryButton}>
-              See a decision
-            </a>
+              <ul className="sp-label mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 normal-case tracking-[0.04em] text-sp-muted">
+                {HERO_PROOF.map((proof, index) => (
+                  <Fragment key={proof}>
+                    {index > 0 ? (
+                      <li aria-hidden="true" className="text-sp-muted/40">
+                        &middot;
+                      </li>
+                    ) : null}
+                    <li>{proof}</li>
+                  </Fragment>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col gap-8 lg:col-span-5">
+              <HeroPipeline onDraftReady={onDraftReady} />
+              <HeroTerminal isOpen={isDraftReady} />
+            </div>
           </div>
-        </div>
-
-        <HeroScene />
-      </div>
-    </section>
+        </Container>
+      </Panel>
+    </Section>
   );
 }

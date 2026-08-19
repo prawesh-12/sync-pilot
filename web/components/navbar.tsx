@@ -10,6 +10,11 @@ import { PendingLink } from "@/components/pending-link";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
+// Matches the landing nav: opaque at every scroll position, one hairline rule,
+// and the shared page container so the logo lines up across the whole product.
+const navLinkClass =
+  "sp-focus sp-body rounded-[6px] px-1 text-sp-muted transition-colors duration-150 hover:text-sp-text";
+
 type NavbarProps = {
     className?: string;
 };
@@ -23,14 +28,14 @@ export function Navbar({ className }: NavbarProps) {
     return (
         <header
             className={cn(
-                "sticky top-0 z-50 border-b border-[#A089E6]/10 bg-[#07070f]/90 backdrop-blur-sm",
+                "sticky top-0 z-50 border-b border-white/8 bg-sp-base",
                 className,
             )}
         >
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+            <div className="sp-container flex items-center justify-between gap-6 py-4">
                 <BrandLogo />
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-6">
                     {!isSignedIn ? (
                         <PendingLink href="/sign-in" className={cn(ctaButtonClass, "px-4 py-2 text-sm")}>
                             Sign in
@@ -39,18 +44,12 @@ export function Navbar({ className }: NavbarProps) {
                     ) : (
                         <>
                             {!pathname.startsWith("/dashboard") ? (
-                                <PendingLink
-                                    href="/dashboard"
-                                    className="px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-white"
-                                >
+                                <PendingLink href="/dashboard" className={navLinkClass}>
                                     Dashboard
                                 </PendingLink>
                             ) : null}
                             {!pathname.startsWith("/agent") ? (
-                                <PendingLink
-                                    href="/agent"
-                                    className="px-3 py-1.5 text-sm text-gray-400 transition-colors hover:text-white"
-                                >
+                                <PendingLink href="/agent" className={navLinkClass}>
                                     Agent
                                 </PendingLink>
                             ) : null}

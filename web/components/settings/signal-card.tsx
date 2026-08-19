@@ -25,7 +25,7 @@ export function SignalIntegrationCard({
     disconnectAction,
 }: SignalIntegrationCardProps) {
     return (
-        <Card className="border-[#A089E6]/30 bg-[#A089E6]/3">
+        <Card className="border-sp-cobalt/30 bg-sp-cobalt/3">
             <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="space-y-2">
                     <CardTitle className="text-base">Signal Integration</CardTitle>

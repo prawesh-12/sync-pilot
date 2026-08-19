@@ -1,12 +1,19 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { Roboto } from "next/font/google";
 import { Spinner } from "@/components/ui/spinner";
-import { ctaButtonTheme } from "@/components/cta-button-class";
-import { cn } from "@/lib/utils";
 
-// Submit button for the Google sign-in form. Shows a spinner while the sign-in
-// server action runs (and the OAuth redirect is being prepared).
+// Google's button specification calls for Roboto Medium, so it is loaded here
+// rather than inheriting the site's own typeface.
+const roboto = Roboto({ subsets: ["latin"], weight: ["500"] });
+
+/**
+ * Google sign-in button, built to Google's published branding guidelines for
+ * the dark theme: #131314 surface, #8E918F border, #E3E3E3 label, Roboto Medium
+ * at 14px, an 18px logo, and a 40px minimum height. Straying from this can hold
+ * up OAuth verification, so do not restyle it to match the rest of the site.
+ */
 export function GoogleSignInSubmit({ label }: { label: string }) {
   const { pending } = useFormStatus();
 
@@ -15,19 +22,22 @@ export function GoogleSignInSubmit({ label }: { label: string }) {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className={cn(
-        ctaButtonTheme,
-        "flex w-full items-center justify-center gap-3 px-6 py-2.5 text-sm disabled:opacity-70",
-      )}
+      className={`${roboto.className} flex h-10 w-full cursor-pointer items-center justify-center gap-3 rounded-[20px] border border-[#8E918F] bg-[#131314] px-3 text-sm leading-none font-medium text-[#E3E3E3] transition-colors duration-150 hover:bg-[#1c1c1d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A089E6] disabled:opacity-70`}
     >
       {pending ? (
         <>
-          <Spinner className="size-5" />
+          <Spinner className="size-[18px]" />
           Signing in...
         </>
       ) : (
         <>
-          <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="shrink-0"
+          >
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z"
