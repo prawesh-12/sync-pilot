@@ -3,112 +3,118 @@ import {
   AlignLeft,
   Archive,
   CircleSlash,
-  Reply,
   Tag,
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 
-export type Fact = { stat: string; detail: string };
-export type Step = { title: string; detail: string };
-export type Decision = { icon: LucideIcon; name: string; detail: string };
+export type Decision = { name: string; detail: string; icon: LucideIcon };
 export type Faq = { question: string; answer: string };
+export type ActivityEvent = { time: string; text: string };
+export type JourneyStation = { system: string; title: string; meta: string };
+export type SignalMessage = {
+  id: string;
+  author: "syncpilot" | "user";
+  text: string;
+  code?: string;
+  time: string;
+  confirmed?: boolean;
+};
 
-export const HERO_SUBHEAD =
-  "SyncPilot reads every new email, decides what matters, and sends you a message on Signal — a summary, or a draft ready to go. Reply to send it, kill it, or tell it what to change. Nothing leaves your outbox until you say so.";
+export const HERO_SUMMARY =
+  "SyncPilot reads your Gmail on a schedule, commits to one action per email, and sends the result to Signal. Drafted replies wait there until you answer.";
 
-export const FACTS: Fact[] = [
+// One worked example runs through every panel so the page reads as a single case.
+export const SAMPLE_EMAIL = {
+  sender: "Priya Shah",
+  address: "priya@northwind.co",
+  subject: "Q3 deck timeline",
+  preview: "Can you get me the updated deck by Friday?",
+  receivedAt: "09:14",
+};
+
+export const SAMPLE_DRAFT = {
+  refCode: "A3X9",
+  lines: [
+    "Hi Priya,",
+    "I'll have the updated deck ready by Friday afternoon.",
+    "Best regards,",
+    "Prawesh",
+  ],
+};
+
+export const SELECTED_DECISION: Decision = {
+  name: "Draft reply",
+  detail: "Written and saved to Gmail drafts. Nothing sends without confirmation.",
+  icon: AlignLeft,
+};
+
+export const DECISION_REASON =
+  "Names a deadline and asks a direct question, so it needs a response before Friday.";
+
+export const ALTERNATE_DECISIONS: Decision[] = [
+  { name: "Summarize", detail: "Send the gist, no reply needed", icon: AlignLeft },
+  { name: "Escalate", detail: "Flag as urgent", icon: TriangleAlert },
+  { name: "Label", detail: "File under a Gmail label", icon: Tag },
+  { name: "Archive", detail: "Clear it from the inbox", icon: Archive },
+  { name: "Snooze", detail: "Resurface it later", icon: AlarmClock },
+  { name: "Leave it alone", detail: "Not worth an interruption", icon: CircleSlash },
+];
+
+export const SIGNAL_MESSAGES: SignalMessage[] = [
   {
-    stat: "Every 5–15 min",
-    detail:
-      "It checks Gmail on its own schedule. Nothing to open, nothing to refresh.",
+    id: "draft-ready",
+    author: "syncpilot",
+    text: "Draft ready for: Q3 deck timeline",
+    code: "A3X9",
+    time: "09:14",
   },
+  { id: "approval", author: "user", text: "A3X9 send", time: "09:15" },
   {
-    stat: "Under a minute",
-    detail:
-      "Signal replies are polled about once a minute, so confirmations land fast.",
-  },
-  {
-    stat: "Exactly one action",
-    detail: "One decision per email. Never a maybe, never left half-triaged.",
+    id: "confirmation",
+    author: "syncpilot",
+    text: "Sent your reply for: Q3 deck timeline",
+    time: "09:15",
+    confirmed: true,
   },
 ];
 
-export const STEPS: Step[] = [
-  {
-    title: "A new email lands in Gmail.",
-    detail:
-      "SyncPilot picks it up on the next sweep — no forwarding rules, no plugin.",
-  },
-  {
-    title: "It reads the email and picks one action.",
-    detail:
-      "Reply, summarize, escalate, label, archive, snooze, or leave it alone. Exactly one, every time.",
-  },
-  {
-    title: "You get a message on Signal.",
-    detail:
-      "Not a push notification. Not a new app. A message in a thread you already read.",
-  },
-  {
-    title: "A drafted reply comes with a short code.",
-    detail: "Text back “send”, “no”, or exactly what you want changed.",
-  },
-  {
-    title: "It sends, discards, or rewrites — and confirms.",
-    detail:
-      "The confirmation arrives in the same thread. Nothing is ever sent without your reply.",
-  },
+export const REPLY_COMMANDS = [
+  { command: "A3X9 send", result: "Sends the draft" },
+  { command: "A3X9 no", result: "Discards it" },
+  { command: "A3X9 make it shorter", result: "Rewrites and re-sends the draft" },
 ];
 
-export const DECISIONS: Decision[] = [
-  {
-    icon: Reply,
-    name: "Draft a reply",
-    detail: "Writes the response and holds it until you confirm on Signal.",
-  },
-  {
-    icon: AlignLeft,
-    name: "Summarize",
-    detail: "Sends you the gist. Nothing to answer, nothing to open.",
-  },
-  {
-    icon: TriangleAlert,
-    name: "Escalate",
-    detail: "Flags it as urgent so it reaches you ahead of everything else.",
-  },
-  {
-    icon: Tag,
-    name: "Label",
-    detail: "Files it in Gmail under the label it belongs in.",
-  },
-  {
-    icon: Archive,
-    name: "Archive",
-    detail: "Clears it out of the inbox without a word from you.",
-  },
-  {
-    icon: AlarmClock,
-    name: "Snooze",
-    detail: "Puts it away and brings it back when it's actually relevant.",
-  },
-  {
-    icon: CircleSlash,
-    name: "Leave it alone",
-    detail: "Decides it isn't worth interrupting anyone over.",
-  },
+// The same message in each state it passes through, not five separate examples.
+export const JOURNEY: JourneyStation[] = [
+  { system: "Gmail", title: "Q3 deck timeline", meta: "Priya Shah · 09:14" },
+  { system: "SyncPilot", title: "Draft reply", meta: "1 of 7 actions" },
+  { system: "Signal", title: "Draft ready", meta: "A3X9" },
+  { system: "You", title: "A3X9 send", meta: "09:15" },
+  { system: "Gmail", title: "Reply added to thread", meta: "09:15" },
+];
+
+export const ACTIVITY_STREAM: ActivityEvent[] = [
+  { time: "09:15", text: "24 emails checked" },
+  { time: "09:16", text: "2 drafts waiting" },
+  { time: "09:17", text: "1 reply confirmed" },
+];
+
+export const ONBOARDING_STEPS = [
+  { name: "Connect Gmail", detail: "Read-only access through Google OAuth" },
+  { name: "Link Signal", detail: "Scan one QR code from the dashboard" },
 ];
 
 export const FAQS: Faq[] = [
   {
-    question: "Why Signal and not WhatsApp or Slack?",
-    answer:
-      "Because it's the app you already have open, and it's encrypted end to end. SyncPilot is meant to disappear into a conversation you're already having, not become another tab you have to remember to check.",
-  },
-  {
     question: "Does it ever send email without me?",
     answer:
       "No. Every draft waits for a reply from you on Signal before it goes anywhere. If you never reply, the draft expires after 24 hours and nothing is sent.",
+  },
+  {
+    question: "Why Signal and not WhatsApp or Slack?",
+    answer:
+      "Because it's the app you already have open, and it's encrypted end to end. SyncPilot connects through Signal's own client protocol using a self-hosted signal-cli bridge. It is not affiliated with or endorsed by Signal.",
   },
   {
     question: "How often does it check my inbox?",
@@ -128,11 +134,11 @@ export const FAQS: Faq[] = [
   {
     question: "What does it cost?",
     answer:
-      "Free to use today. A paid Pro plan is coming, but nothing is gated behind it right now — every feature described on this page is available on the free plan.",
+      "Free to use today. A paid Pro plan is coming, but nothing is gated behind it right now.",
   },
   {
     question: "Do I need to keep anything open?",
     answer:
-      "No. SyncPilot runs as a scheduled background job. Your laptop can be shut, your browser closed — the only thing you need is Signal on your phone.",
+      "No. SyncPilot runs as a scheduled background job. Your laptop can be shut and your browser closed.",
   },
 ];

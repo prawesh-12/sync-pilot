@@ -1,97 +1,70 @@
 import { Check } from "lucide-react";
+import {
+  SIGNAL_MESSAGES,
+  type SignalMessage,
+} from "@/components/landing/landing-content";
+import { Meta, Panel, RefCode } from "@/components/landing/product-surface";
 
-// Staggered in CSS rather than JS so this can stay a server component.
+const CHECK_SIZE = 13;
 
-function RefCode({ children }: { children: React.ReactNode }) {
+function Outgoing({ message }: { message: SignalMessage }) {
   return (
-    <span className="mx-0.5 inline-block rounded-[5px] border border-sp-amber/35 bg-sp-amber/12 px-1.5 py-px font-mono-tech text-[0.85em] font-medium tracking-wide text-sp-amber">
-      {children}
-    </span>
+    <li className="flex flex-col items-end">
+      <p className="rounded-[14px] rounded-br-[4px] bg-sp-cobalt px-3.5 py-2 font-mono-tech text-sm text-white">
+        {message.text}
+      </p>
+      <Meta className="mt-1.5 text-xs">{message.time}</Meta>
+    </li>
   );
 }
 
-function Timestamp({
-  children,
-  align = "left",
-}: {
-  children: React.ReactNode;
-  align?: "left" | "right";
-}) {
+function Incoming({ message }: { message: SignalMessage }) {
   return (
-    <span
-      className={`mt-1 block font-mono-tech text-[11px] text-sp-muted ${
-        align === "right" ? "text-right" : ""
-      }`}
-    >
-      {children}
-    </span>
+    <li className="flex flex-col items-start">
+      <div className="max-w-[86%] rounded-[14px] rounded-bl-[4px] bg-white/7 px-3.5 py-2.5">
+        <p className="flex items-start gap-2 text-sm leading-snug text-sp-text/90">
+          {message.confirmed ? (
+            <Check
+              size={CHECK_SIZE}
+              strokeWidth={2.6}
+              aria-hidden="true"
+              className="mt-[3px] shrink-0 text-sp-sage"
+            />
+          ) : null}
+          {message.text}
+        </p>
+        {message.code ? (
+          <p className="mt-2">
+            <RefCode>{message.code}</RefCode>
+          </p>
+        ) : null}
+      </div>
+      <Meta className="mt-1.5 text-xs">{message.time}</Meta>
+    </li>
   );
 }
 
 export function SignalThread() {
   return (
-    <div className="w-full max-w-[400px] rounded-[14px] border border-sp-text/10 bg-sp-raised/40 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.8)]">
-      <div className="flex items-center gap-3 border-b border-sp-text/8 px-4 py-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-sp-cobalt font-display text-sm font-bold text-sp-text">
+    <Panel edge className="w-full max-w-[380px] overflow-hidden">
+      <div className="flex items-center gap-3 border-b border-white/7 px-4 py-3">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sp-cobalt/85 font-display text-xs font-semibold text-white">
           S
-        </div>
+        </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-sp-text">SyncPilot</p>
-          <p className="font-mono-tech text-[11px] text-sp-muted">
-            Signal &middot; end-to-end encrypted
-          </p>
-        </div>
-        <span
-          aria-hidden="true"
-          className="ml-auto size-1.5 shrink-0 rounded-full bg-sp-sage"
-        />
-      </div>
-
-      <div className="flex flex-col gap-3 px-4 py-5">
-        <div className="sp-bubble sp-bubble-1 max-w-[86%] self-start">
-          <div className="rounded-[18px] rounded-bl-[6px] bg-sp-raised px-4 py-3">
-            <p className="text-[13.5px] leading-relaxed text-sp-text">
-              Priya asked about the Q3 deck &mdash; wants it by Friday. Draft
-              ready: <RefCode>A3X9</RefCode>
-            </p>
-          </div>
-          <Timestamp>9:14</Timestamp>
-        </div>
-
-        <div className="sp-bubble sp-bubble-2 max-w-[86%] self-end">
-          <div className="rounded-[18px] rounded-br-[6px] bg-sp-cobalt px-4 py-2.5">
-            <p className="text-[13.5px] leading-relaxed text-sp-text">
-              <span className="font-mono-tech tracking-wide">A3X9</span> send
-            </p>
-          </div>
-          <Timestamp align="right">9:14</Timestamp>
-        </div>
-
-        {/* Confirmation copy is verbatim from features/signal/handle-reply.ts. */}
-        <div className="sp-bubble sp-bubble-3 max-w-[86%] self-start">
-          <div className="rounded-[18px] rounded-bl-[6px] bg-sp-raised px-4 py-3">
-            <p className="flex items-start gap-2 text-[13.5px] leading-relaxed text-sp-text">
-              <Check
-                size={15}
-                strokeWidth={2.5}
-                aria-hidden="true"
-                className="mt-[3px] shrink-0 text-sp-sage"
-              />
-              <span>Sent your reply for: Q3 deck timeline</span>
-            </p>
-          </div>
-          <Timestamp>9:15</Timestamp>
+          <p className="text-sm font-medium text-sp-text">SyncPilot</p>
+          <Meta className="text-xs">Signal · encrypted</Meta>
         </div>
       </div>
-
-      <div className="border-t border-sp-text/8 px-4 py-3">
-        <p className="font-mono-tech text-[11px] leading-relaxed text-sp-muted">
-          <span className="text-sp-muted/70">also works &rarr;</span>{" "}
-          <span className="text-sp-text/70">A3X9 no</span>
-          <span className="px-1.5 text-sp-muted/50">&middot;</span>
-          <span className="text-sp-text/70">A3X9 make it shorter</span>
-        </p>
-      </div>
-    </div>
+      <ul className="space-y-4 px-4 py-5">
+        {SIGNAL_MESSAGES.map((message) =>
+          message.author === "user" ? (
+            <Outgoing key={message.id} message={message} />
+          ) : (
+            <Incoming key={message.id} message={message} />
+          ),
+        )}
+      </ul>
+    </Panel>
   );
 }

@@ -180,40 +180,49 @@
     --font-mono-tech: var(--font-plex-mono);
 }
 
-/* Pure CSS so the hero mockup stays a server component. */
-@keyframes sp-bubble-in {
-    from {
-        opacity: 0;
-        transform: translateY(14px);
-    }
-    to {
-        opacity: 1;
+/* Decorative only, so nothing is hidden if the animation never runs. */
+@keyframes sp-travel {
+    0% {
         transform: translateY(0);
+        opacity: 0;
+    }
+    18%,
+    72% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(var(--sp-travel-distance, 100px));
+        opacity: 0;
     }
 }
 
-.sp-bubble {
-    opacity: 0;
-    animation: sp-bubble-in 480ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.sp-travel {
+    animation: sp-travel 3.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.sp-bubble-1 {
-    animation-delay: 300ms;
+@keyframes sp-breathe {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
 }
 
-.sp-bubble-2 {
-    animation-delay: 540ms;
-}
-
-.sp-bubble-3 {
-    animation-delay: 780ms;
+/* Signals that the background worker is live rather than a static label. */
+.sp-breathe {
+    animation: sp-breathe 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .sp-bubble {
+    .sp-travel,
+    .sp-breathe {
         animation: none;
-        opacity: 1;
-        transform: none;
+    }
+
+    .sp-travel {
+        opacity: 0;
     }
 }
 

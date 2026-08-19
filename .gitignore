@@ -46,3 +46,6 @@ docs.md
 # signal
 server/signal-cli-config/signal-cli-config/data
 server/signal-cli-config/signal-cli-config/stickers
+
+# skills
+.claude/skills/ui-ux-pro-max

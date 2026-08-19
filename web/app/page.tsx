@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Work_Sans } from "next/font/google";
-import { HERO_SUBHEAD } from "@/components/landing/landing-content";
+import { HERO_SUMMARY } from "@/components/landing/landing-content";
+import { ActivitySection } from "@/components/landing/activity-section";
+import { DecisionSection } from "@/components/landing/decision-section";
+import { JourneySection } from "@/components/landing/journey-section";
 import { LandingBackdrop } from "@/components/landing/landing-backdrop";
-import { LandingCta } from "@/components/landing/landing-cta";
-import { LandingDecisions } from "@/components/landing/landing-decisions";
-import { LandingFacts } from "@/components/landing/landing-facts";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingNav } from "@/components/landing/landing-nav";
-import { LandingQuestions } from "@/components/landing/landing-questions";
-import { LandingRuntimeCard } from "@/components/landing/landing-runtime-card";
-import { LandingSteps } from "@/components/landing/landing-steps";
-import { LandingWhySignal } from "@/components/landing/landing-why-signal";
+import { QuestionsSection } from "@/components/landing/questions-section";
+import { SignalSection } from "@/components/landing/signal-section";
+import { StartSection } from "@/components/landing/start-section";
 
 const body = Work_Sans({
   subsets: ["latin"],
@@ -41,14 +40,14 @@ const SITE_URL =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: PAGE_TITLE,
-  description: HERO_SUBHEAD,
+  description: HERO_SUMMARY,
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     url: "/",
     siteName: "SyncPilot",
     title: PAGE_TITLE,
-    description: HERO_SUBHEAD,
+    description: HERO_SUMMARY,
     images: [
       {
         url: OG_IMAGE_PATH,
@@ -61,7 +60,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: PAGE_TITLE,
-    description: HERO_SUBHEAD,
+    description: HERO_SUMMARY,
     images: [OG_IMAGE_PATH],
   },
 };
@@ -76,19 +75,12 @@ export default function Home() {
 
       <main className="relative z-10 flex-1">
         <LandingHero />
-        <LandingFacts />
-        <LandingSteps />
-        <LandingDecisions />
-
-        <section className="border-t border-sp-text/8">
-          <div className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-16 sm:px-6 md:py-24 lg:grid-cols-2 lg:gap-16">
-            <LandingWhySignal />
-            <LandingRuntimeCard />
-          </div>
-        </section>
-
-        <LandingQuestions />
-        <LandingCta />
+        <JourneySection />
+        <DecisionSection />
+        <SignalSection />
+        <ActivitySection />
+        <QuestionsSection />
+        <StartSection />
       </main>
 
       <LandingFooter />
