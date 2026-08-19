@@ -8,6 +8,24 @@ on:
 # web/ and server/ are independent pnpm projects (separate lockfiles), so each
 # is installed and checked in its own working directory.
 jobs:
+  # A test file outside tests/ matches no vitest include glob, so it would never
+  # run and CI would still pass. This fails the build instead.
+  test-layout:
+    name: no tests outside tests/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every test file lives in tests/
+        run: |
+          stray=$(git ls-files '*.test.ts' '*.test.tsx' | grep -v '^tests/' || true)
+          if [ -n "$stray" ]; then
+            echo "These test files are outside tests/, so no vitest config runs them:"
+            echo "$stray"
+            echo "Move them into tests/web_test/ or tests/server_test/."
+            exit 1
+          fi
+          echo "All $(git ls-files 'tests/**/*.test.ts' | wc -l) test files are under tests/."
+
   check:
     name: typecheck + test (${{ matrix.package }})
     runs-on: ubuntu-latest
@@ -33,7 +51,7 @@ jobs:
       - run: pnpm run test
 
   lint:
-    name: lint (web)
+    name: lint (web + tests)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,3 +68,5 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
+      # Linted from the repo root: the tests are outside ESLint's base path.
+      - run: pnpm run lint:tests

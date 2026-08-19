@@ -3,6 +3,7 @@ import { runAgent } from "./agent";
 import { redisConnection, SYNC_QUEUE_NAME, type SyncJob } from "./queue";
 import { reportJobStatus, type SyncJobStatus } from "./report-status";
 import { scopedLogger } from "./logger";
+import { isEntryPoint } from "./entry-point";
 
 // Process this many Gmail accounts at the same time, per the plan's target.
 const WORKER_CONCURRENCY = 10;
@@ -14,7 +15,7 @@ export function processJob(job: SyncJob): Promise<void> {
   return runAgent(job);
 }
 
-function startWorker() {
+export function startWorker() {
   const worker = new Worker<SyncJob>(
     SYNC_QUEUE_NAME,
     (job: Job<SyncJob>) => processJob(job.data),
@@ -51,6 +52,8 @@ function startWorker() {
   });
 
   registerShutdown(worker);
+
+  return worker;
 }
 
 function report(job: Job<SyncJob>, status: SyncJobStatus, error?: string) {
@@ -75,4 +78,6 @@ function registerShutdown(worker: Worker<SyncJob>) {
   process.on("SIGINT", shutdown);
 }
 
-startWorker();
+if (isEntryPoint(import.meta.url)) {
+  startWorker();
+}

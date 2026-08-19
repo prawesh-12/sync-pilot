@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      // Test files live in ../tests, outside this package, so a bare "vitest"
+      // there has no node_modules to walk up to. This points them here.
+      "vitest": ["./node_modules/vitest"]
     }
   },
   "include": [
@@ -28,7 +31,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "../tests/web_test/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

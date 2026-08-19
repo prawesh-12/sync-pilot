@@ -5,7 +5,6 @@ import {
   buildSyncPilotSystemPrompt,
   buildSyncPilotUserPrompt,
   isSyncPilotWorkflow,
-  type SyncPilotAgentResult,
   type SyncPilotWorkflow,
 } from "@/features/ai/syncpilot-agent";
 import { parseAgentResult } from "@/features/agent/result-parser";

@@ -9,8 +9,11 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "vitest": ["./node_modules/vitest"]
+    }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../tests/server_test/**/*.ts"],
   "exclude": ["node_modules"]
 }
