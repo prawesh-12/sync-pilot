@@ -38,6 +38,12 @@ function decodePart(value: string, label: string) {
   return Buffer.from(value, BASE64_ENCODING);
 }
 
+// An empty plaintext encrypts to an empty ciphertext, so unlike the fixed-length
+// iv and auth tag this part may be absent.
+function decodeContent(value: string) {
+  return Buffer.from(value, BASE64_ENCODING);
+}
+
 function parseEncryptedValue(ciphertext: string) {
   const parts = ciphertext.split(ENCRYPTED_VALUE_SEPARATOR);
 
@@ -50,7 +56,7 @@ function parseEncryptedValue(ciphertext: string) {
   return {
     iv: decodePart(iv, "initialization vector"),
     authTag: decodePart(authTag, "authentication tag"),
-    encryptedContent: decodePart(encryptedContent, "ciphertext"),
+    encryptedContent: decodeContent(encryptedContent),
   };
 }
 

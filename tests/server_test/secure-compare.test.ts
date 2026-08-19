@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { secureEquals } from "../secure-compare";
+import { secureEquals } from "../../server/secure-compare";
 
 describe("secureEquals (server)", () => {
   it("returns true for matching string header and secret", () => {

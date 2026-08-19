@@ -105,7 +105,9 @@ function getHeadlineFromSummary(summary: string) {
     return "Review required";
   }
 
-  return summary.split(/[.!?]/, 1)[0]?.trim() || "Review required";
+  // Punctuation ends a sentence only before a space or the string end, so an
+  // address like dana@acme.com does not truncate the headline.
+  return summary.split(/[.!?](?=\s|$)/, 1)[0]?.trim() || "Review required";
 }
 
 function normalizeRiskLevel(value: unknown): SyncPilotAgentResult["riskLevel"] {

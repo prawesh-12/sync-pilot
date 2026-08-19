@@ -7,6 +7,7 @@ import { enqueueSyncJobs, getEmailQueue, type SyncJob } from "./queue";
 import { secureEquals } from "./secure-compare";
 import { basicAuth } from "./basic-auth";
 import { scopedLogger } from "./logger";
+import { isEntryPoint } from "./entry-point";
 
 const SYNC_SECRET_HEADER = "x-secret";
 const QUEUE_DASHBOARD_PATH = "/admin/queues";
@@ -88,12 +89,14 @@ function isSyncJob(value: unknown): value is SyncJob {
   );
 }
 
-function startServer() {
+export function startServer() {
   const app = createServer();
 
-  app.listen(serverConfig.serverPort, () => {
+  return app.listen(serverConfig.serverPort, () => {
     log.info(`Listening on port ${serverConfig.serverPort}`);
   });
 }
 
-startServer();
+if (isEntryPoint(import.meta.url)) {
+  startServer();
+}
