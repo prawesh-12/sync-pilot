@@ -76,7 +76,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ubuntu
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          script_stop: true
+          # No script_stop input on ssh-action@v1; the script sets -euo pipefail.
           script: |
             set -euo pipefail
             cd ~/syncpilot/server
