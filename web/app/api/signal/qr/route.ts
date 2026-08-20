@@ -3,8 +3,11 @@ import { auth } from "@/auth";
 import { buildSignalDeviceName, getSignalQrCodeLink } from "@/features/signal/signal";
 import { getSignalIntegration } from "@/db/queries";
 import { getSignalAuthHeaders } from "@/config/env";
+import { scopedLogger } from "@/lib/logger";
 
 const SIGNAL_QR_TIMEOUT_MS = 15_000;
+
+const log = scopedLogger("SIGNAL");
 
 export async function GET() {
     const session = await auth();
@@ -28,6 +31,16 @@ export async function GET() {
         if (!upstreamResponse.ok) {
             const upstreamError = await upstreamResponse.text().catch(() => "");
 
+            log.error(
+                {
+                    userId,
+                    deviceName,
+                    statusCode: upstreamResponse.status,
+                    reason: upstreamError,
+                },
+                "signal QR request failed",
+            );
+
             return NextResponse.json(
                 {
                     error:
@@ -39,6 +52,12 @@ export async function GET() {
         }
 
         const body = await upstreamResponse.arrayBuffer();
+
+        log.info(
+            { userId, deviceName, bytes: body.byteLength },
+            "signal QR served",
+        );
+
         const headers = new Headers({
             "Cache-Control": "no-store",
         });
@@ -57,6 +76,8 @@ export async function GET() {
             error instanceof Error
                 ? error.message
                 : "Failed to load Signal QR.";
+
+        log.error({ userId, err: error }, "signal QR could not be loaded");
 
         return NextResponse.json(
             {

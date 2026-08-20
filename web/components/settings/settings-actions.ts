@@ -11,8 +11,11 @@ import {
   upsertUser,
 } from "@/db/queries";
 import { buildSignalDeviceName } from "@/features/signal/signal";
+import { scopedLogger } from "@/lib/logger";
 
 const PHONE_NUMBER_PATTERN = /^\+\d{8,15}$/;
+
+const log = scopedLogger("SIGNAL");
 
 function revalidateSettings() {
   revalidatePath("/dashboard");
@@ -33,15 +36,20 @@ export async function saveSignalIntegrationAction(formData: FormData) {
   const validationError = validateNumbers(senderNumber, recipientNumber);
 
   if (validationError) {
+    log.warn({ userId, reason: validationError }, "signal link not saved");
     redirect(buildSignalSettingsUrl("failed", validationError));
   }
 
+  const deviceName = buildSignalDeviceName(userId);
+
   await upsertUser({ id: userId, email });
   await upsertSignalIntegration(userId, {
-    deviceName: buildSignalDeviceName(userId),
+    deviceName,
     senderNumber,
     recipientNumber,
   });
+
+  log.info({ userId, deviceName }, "signal link saved");
 
   revalidateSettings();
   redirect(buildSignalSettingsUrl("saved"));
@@ -56,6 +64,7 @@ export async function disconnectSignalAction() {
   }
 
   await disconnectSignalIntegration(userId);
+  log.info({ userId }, "signal link removed");
   revalidateSettings();
   redirect(buildSignalSettingsUrl("disconnected"));
 }
