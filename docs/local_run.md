@@ -255,9 +255,12 @@ wrong. Check with `docker exec syncpilot-redis-local redis-cli ping`.
 ## Stopping
 
 ```bash
-docker compose down          # keep data
-docker compose down -v       # also delete Redis data and Signal linking
+docker compose down          # stop the containers
+docker compose down -v       # also delete the Redis queue data
 ```
 
-`down -v` removes the volume holding the Signal device link, so you would need
-to scan the QR code again.
+Neither command touches your Signal device link. That data is a bind mount to
+`server/signal-cli-config/signal-cli-config/` on your disk, not a Docker volume,
+so `-v` leaves it alone. Only deleting that directory loses the link.
+
+`-v` does delete the `redis-data` volume, which drops any queued jobs.

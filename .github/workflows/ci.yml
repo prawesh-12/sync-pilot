@@ -26,6 +26,17 @@ jobs:
           fi
           echo "All $(git ls-files 'tests/**/*.test.ts' | wc -l) test files are under tests/."
 
+  # deploy-server.yml only runs on server/ pushes, so a broken workflow would
+  # otherwise sit undetected until the next one. Validate it on every push.
+  workflows:
+    name: lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
+
   check:
     name: typecheck + test (${{ matrix.package }})
     runs-on: ubuntu-latest
