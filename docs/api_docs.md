@@ -201,6 +201,32 @@ at most 12000, output capped at 500 tokens.
 
 Returns 400 if the task is too short or the input too large.
 
+### `GET|POST /api/auth/[...nextauth]`
+
+The Auth.js catch-all. `web/app/api/auth/[...nextauth]/route.ts` re-exports the
+`GET` and `POST` handlers from `web/auth.ts` and adds nothing of its own.
+
+It serves the sign-in, callback, session, and sign-out endpoints:
+
+| Path | Purpose |
+| --- | --- |
+| `/api/auth/signin` | Starts Google sign-in |
+| `/api/auth/callback/google` | Google redirects here after consent |
+| `/api/auth/session` | Current session as JSON, used by `useSession()` |
+| `/api/auth/csrf` | CSRF token for the sign-in form |
+| `/api/auth/signout` | Clears the session |
+
+`/api/auth/callback/google` is the URI to register in Google Cloud Console:
+`http://localhost:3000/api/auth/callback/google` locally, and the same path on
+your production domain.
+
+The `jwt` callback in `web/auth.ts` swaps the provider's random subject for the
+user id already stored against that email, so signing in twice does not create a
+second user. See `resolveUserIdByEmail` in `web/db/queries/users.ts`.
+
+Do not confuse these with `/api/auth/composio`, which is the Gmail connection
+and unrelated to sign-in.
+
 ### `GET /api/auth/status`
 
 ```json
@@ -209,8 +235,10 @@ Returns 400 if the task is too short or the input too large.
 
 ### `GET /api/auth/composio`
 
-Starts the Gmail connection. Redirects to Composio's OAuth URL. Returns 502 if
-Composio does not return a redirect URL.
+Starts the Gmail connection. Redirects straight to Google's OAuth screen, using
+Composio's `long_redirect_url` option so the Composio-hosted page is skipped. If
+that endpoint has been retired for the auth config, it falls back to a Composio
+Connect Link. Returns 502 if no redirect URL comes back.
 
 ### `GET /api/auth/composio/callback`
 

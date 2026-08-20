@@ -1,8 +1,7 @@
 # Run SyncPilot locally
 
-This gets the app running on your machine. Docker runs only the supporting
-services (Redis and signal-cli). The web app and the intake server run directly
-with pnpm so you keep hot reload.
+Docker runs Redis and signal-cli. The web app, the intake server, and the worker
+run on the host through `./run.sh`, so you keep hot reload.
 
 Expect 20 to 30 minutes the first time, mostly spent creating accounts on the
 external services.
@@ -12,11 +11,11 @@ external services.
 | Tool | Check | Notes |
 | --- | --- | --- |
 | Node.js 24+ | `node -v` | CI runs on 24 |
-| pnpm 11+ | `pnpm -v` | `corepack enable` installs it |
+| pnpm 11.7 | `pnpm -v` | `corepack enable` installs it |
 | Docker + Compose | `docker compose version` | For Redis and signal-cli |
 | A phone with Signal | | You will link it as a second device |
 
-You also need free accounts on:
+Free accounts needed:
 
 - [Neon](https://neon.tech) for Postgres
 - [Composio](https://composio.dev) for the Gmail connection
@@ -32,10 +31,9 @@ pnpm install --dir web
 pnpm install --dir server
 ```
 
-`web/` and `server/` are separate pnpm projects with their own lockfiles, so
-they install separately.
+`web/` and `server/` are separate pnpm projects with their own lockfiles.
 
-## 3. Start the supporting services
+## 3. Start Redis and signal-cli
 
 ```bash
 docker compose up -d
@@ -44,39 +42,38 @@ docker compose ps
 
 You should see `syncpilot-redis-local` and `syncpilot-signal-local` running.
 
-This replaces the older `server/signal-cli-config/docker-compose.yml`. Use the
-root file so Redis and signal-cli come up together.
-
 ## 4. Create the database
 
-Postgres is not in the compose file, and that is on purpose.
-`web/db/client.ts` uses the Neon HTTP driver (`@neondatabase/serverless`), which
-sends each query as an HTTP request to a Neon endpoint. It does not open a TCP
-connection, so a plain Postgres container cannot serve it.
+Postgres is not in the compose file. `web/db/client.ts` uses the Neon HTTP
+driver, which sends each query over HTTP rather than opening a TCP connection,
+so a plain Postgres container cannot serve it.
 
 Create a free project at [neon.tech](https://neon.tech) and copy the connection
-string. It looks like this:
+string:
 
 ```text
 postgresql://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
 ```
 
-## 5. Generate local secrets
+## 5. Generate secrets
 
 ```bash
 openssl rand -base64 32   # AUTH_SECRET
-openssl rand -hex 32      # ENCRYPTION_KEY (must be exactly 64 hex characters)
+openssl rand -hex 32      # ENCRYPTION_KEY (exactly 64 hex characters)
 openssl rand -hex 32      # CRON_SECRET
+openssl rand -hex 32      # SYNC_SECRET
 ```
 
-## 6. Create `web/.env.local`
+## 6. Create the env files
+
+Two files, one per package. Both are gitignored.
 
 ```bash
 cp web/.env.example web/.env.local
+cp server/.env.example server/.env.local
 ```
 
-Fill in what you collected. Every variable is documented in
-`web/.env.example`. The ones that matter for a first run:
+`web/.env.local`:
 
 ```env
 AUTH_SECRET=<from step 5>
@@ -97,19 +94,33 @@ SIGNAL_CLI_REST_URL=http://localhost:8080
 SIGNAL_AUTH_TOKEN=
 
 CRON_SECRET=<from step 5>
-
-SYNC_SECRET=
-INTAKE_SERVER_URL=
+SYNC_SECRET=<from step 5>
+INTAKE_SERVER_URL=http://localhost:3001
 ```
 
-Two notes:
+`server/.env.local`:
 
-- Leave `SIGNAL_AUTH_TOKEN` empty locally. It exists so a reverse proxy in
-  production can reject requests without a matching `X-Signal-Auth` header.
-  There is no proxy in front of `localhost:8080`.
-- Leave `INTAKE_SERVER_URL` empty. When it is blank, the `fetch-emails` cron
-  runs each Gmail account inline instead of pushing to the queue. That is the
-  simplest path for local work. Section 11 covers turning the queue on.
+```env
+SYNC_SECRET=<same value as web/.env.local>
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+PORT=3001
+WEB_APP_URL=http://localhost:3000
+
+QUEUE_DASHBOARD_USER=admin
+QUEUE_DASHBOARD_PASSWORD=admin
+```
+
+Notes:
+
+- `SYNC_SECRET` must match in both files.
+- `REDIS_HOST` is `localhost` locally because the intake server runs on the
+  host. In production it must be `redis`, the Compose service name.
+- Leave `SIGNAL_AUTH_TOKEN` empty locally. There is no proxy in front of
+  `localhost:8080`.
+- `INTAKE_SERVER_URL` set means the cron queues one job per account. Leave it
+  blank to run accounts inline instead.
 
 ## 7. Configure Google OAuth
 
@@ -125,32 +136,48 @@ cd web
 pnpm db:migrate
 ```
 
-There is no auto migrate anywhere in this project, including production. If you
-change `web/db/schema.ts`, run `pnpm db:generate` and then `pnpm db:migrate`.
+No auto migrate exists anywhere, including production. After changing
+`web/db/schema.ts`, run `pnpm db:generate` then `pnpm db:migrate`.
 
-## 9. Start the web app
+## 9. Start everything
+
+From the repo root:
 
 ```bash
-cd web
-pnpm dev
+./run.sh
 ```
 
-Open `http://localhost:3000`.
+That starts three processes and prefixes each line of output:
+
+| Prefix | Process | Port |
+| --- | --- | --- |
+| `[web]` | Next.js dev server | 3000 |
+| `[server]` | Express intake API | 3001 |
+| `[worker]` | BullMQ worker | |
+
+Ctrl+C stops all three. Open `http://localhost:3000`.
+
+`run.sh` checks that `web/.env.local` and `server/.env.local` exist and that
+both packages have `node_modules`, and warns if ports 6379 or 8080 are closed.
+
+To run a piece on its own instead:
+
+```bash
+cd web && pnpm dev
+cd server && pnpm dev      # intake API
+cd server && pnpm worker   # worker
+```
 
 ## 10. Connect Gmail and Signal
 
-In the app:
-
 1. Sign in with Google.
-2. Go to Settings and connect a Gmail account. This redirects to Composio,
-   which handles the Gmail OAuth flow. SyncPilot never holds Gmail tokens.
+2. Settings, then connect a Gmail account. Composio handles the Gmail OAuth
+   flow. SyncPilot never holds Gmail tokens.
 3. Open the Signal card and show the QR code.
-4. On your phone: Signal, then Settings, then Linked devices, then `+`, then
-   scan the code.
+4. On your phone: Signal, Settings, Linked devices, `+`, scan the code.
 
-The agent only picks up accounts belonging to a user who has **both** Gmail and
-Signal connected. If either is missing, runs return zero accounts and nothing
-appears to happen.
+The agent only picks up accounts where the user has **both** Gmail and Signal
+connected. If either is missing, runs return zero accounts.
 
 ## 11. Trigger a run by hand
 
@@ -161,14 +188,23 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
   http://localhost:3000/api/cron/fetch-emails
 ```
 
-Expected response with the queue off:
+With `INTAKE_SERVER_URL` set:
+
+```json
+{ "mode": "queued", "accountsQueued": 1 }
+```
+
+With it blank:
 
 ```json
 { "mode": "inline", "accountsProcessed": 1, "successfulRuns": 1, "failedRuns": 0, "runs": [] }
 ```
 
-You should get a Signal message on your phone. If the agent drafted a reply, it
-comes with a 4 character ref code. Reply on Signal, then drain the reply:
+Watch the queue at `http://localhost:3001/admin/queues` (Basic auth, using
+`QUEUE_DASHBOARD_USER` and `QUEUE_DASHBOARD_PASSWORD`).
+
+You should get a Signal message. Drafts arrive with a 4 character ref code.
+Reply on Signal, then drain the reply:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" \
@@ -184,74 +220,61 @@ Reply grammar is `<REF> <command>`:
 | `A3X9 make it shorter` | Rewrite the draft with that instruction |
 | `A3X9` alone | Reply with the usage help |
 
-## 12. Optional: run the queue path
+Pending drafts expire after 24 hours, after which the ref code stops matching.
 
-Only needed if you want to exercise the same path production uses.
-
-Set these in `web/.env.local`:
-
-```env
-SYNC_SECRET=<any value, must match server/.env.local>
-INTAKE_SERVER_URL=http://localhost:3001
-```
-
-Create `server/.env.local`:
+## 12. Production mode on your machine
 
 ```bash
-cp server/.env.example server/.env.local
+./run.sh production
 ```
 
-```env
-SYNC_SECRET=<same value as web/.env.local>
-REDIS_HOST=localhost
-REDIS_PORT=6379
-PORT=3001
-WEB_APP_URL=http://localhost:3000
-QUEUE_DASHBOARD_USER=admin
-QUEUE_DASHBOARD_PASSWORD=admin
-```
+Differences from local mode:
 
-`REDIS_HOST` is `localhost` here because the intake server runs on your machine
-and Redis publishes port 6379. In production the worker runs inside Docker
-Compose and the value must be `redis`, the service name. Getting this wrong
-fails silently: `/health` still returns ok and jobs simply never run.
+- Reads `web/.env.production` and `server/.env.production`.
+- Runs `next build`, then `next start`, so there is no hot reload.
+- Starts the server and worker without file watching.
 
-Or start everything at once from the repo root:
+Create the two files first:
 
 ```bash
-./run.sh              # local mode
-./run.sh production   # build and serve like production
+cp web/.env.example web/.env.production
+cp server/.env.example server/.env.production
 ```
 
-`run.sh` starts the web app, the intake server, and the worker together, and
-stops all three on Ctrl+C. It reads `.env.local` in local mode and
-`.env.production` in production mode.
+## 13. Logs
 
-To run just the queue processes in separate terminals:
+Every process writes JSON lines to stdout:
 
-```bash
-cd server && pnpm dev      # intake API on :3001
-cd server && pnpm worker   # BullMQ worker
+```json
+{"time":"...","level":"info","scope":"AGENT","msg":"triaging email"}
 ```
 
-Now `fetch-emails` returns `{"mode":"queued","accountsQueued":N}` instead of
-running inline. Watch the queue at `http://localhost:3001/admin/queues`.
+`LOG_LEVEL` accepts `debug`, `info` (default), `warn`, `error`, and `silent`.
+Set it in the env file of the package you want to change.
 
-## 13. Common problems
+To send logs, traces, and metrics to Grafana Cloud as well, see
+**[observability.md](observability.md)**. Telemetry is off unless
+`OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 
-**Nothing happens and no error appears.** The account is probably missing a
-Gmail or Signal link. Check Settings.
+## 14. Common problems
+
+**Nothing happens and no error appears.** The account is missing a Gmail or
+Signal link. Check Settings.
+
+**`run.sh` says dependencies are missing.** Run `pnpm install` in the package it
+names.
+
+**`run.sh` says an env file is missing.** It prints the exact `cp` command to
+fix it.
 
 **`ENCRYPTION_KEY` errors.** It must be exactly 64 hex characters. Use
 `openssl rand -hex 32`.
 
-**Signal QR does not load.** Check the container: `docker logs
-syncpilot-signal-local`. Confirm `SIGNAL_CLI_REST_URL` is
-`http://localhost:8080`.
+**Signal QR does not load.** Check `docker logs syncpilot-signal-local`. Confirm
+`SIGNAL_CLI_REST_URL` is `http://localhost:8080`.
 
 **Signal stops receiving replies.** Pull a newer image. An outdated signal-cli
-throws a `getServerGuid` error and drops inbound messages without failing
-loudly:
+throws a `getServerGuid` error and drops inbound messages silently:
 
 ```bash
 docker compose pull signal-api
@@ -263,21 +286,21 @@ docker compose up -d
 **Queue jobs stay in `wait`.** The worker is not running, or `REDIS_HOST` is
 wrong. Check with `docker exec syncpilot-redis-local redis-cli ping`.
 
-## Optional: send telemetry to Grafana Cloud
+**`pnpm install` exits 1 on ignored build scripts.** `pnpm-workspace.yaml` in
+each package lists which packages may run install scripts under `allowBuilds`.
+Set the named package to `true` or `false`.
 
-Not needed for local work. If you want traces, metrics, and logs while
-developing, **[observability.md](observability.md)** covers the four `OTEL_*`
-variables and where to get their values.
+## 15. Stopping
 
-## Stopping
+Ctrl+C stops the three app processes. Then:
 
 ```bash
 docker compose down          # stop the containers
 docker compose down -v       # also delete the Redis queue data
 ```
 
-Neither command touches your Signal device link. That data is a bind mount to
-`server/signal-cli-config/signal-cli-config/` on your disk, not a Docker volume,
-so `-v` leaves it alone. Only deleting that directory loses the link.
+Neither touches your Signal device link. That data is a bind mount to
+`server/signal-cli-config/signal-cli-config/`, not a Docker volume. Only
+deleting that directory loses the link.
 
-`-v` does delete the `redis-data` volume, which drops any queued jobs.
+`-v` deletes the `redis-data` volume, which drops any queued jobs.

@@ -8,16 +8,9 @@
 
 </div>
 
-```mermaid
-flowchart LR
-    email["New email"] --> agent["Agent reads it and<br/>picks one action"]
-    agent --> signal["You get a message<br/>on Signal"]
-    signal --> reply{"You reply"}
-    reply -->|"A3X9 send"| out["Email is sent"]
-    reply -->|"A3X9 no"| drop["Draft is discarded"]
-    reply -->|"A3X9 make it shorter"| rewrite["Draft is rewritten"]
-    rewrite --> signal
-```
+<div align="center">
+  <img src="previews/synpilot_user_loop.png" alt="How one email becomes a sent reply" width="900">
+</div>
 
 Every few minutes it checks for new mail. Each message gets exactly one action:
 summarize, archive, label, escalate, snooze, or draft a reply.
@@ -27,55 +20,32 @@ sent until you answer.
 
 ---
 
-## Contents
-
-### In this README
-
-| # | Section | What you get |
-| :-- | :-- | :-- |
-| 1 | [The problem](#the-problem) | Why this exists and what it refuses to automate |
-| 2 | [Features](#features) | The seven decisions the agent can make |
-| 3 | [Screenshots](#screenshots) | Landing page, dashboard, Signal on mobile |
-| 4 | [Architecture](#architecture) | Service diagram and both request flows |
-| 5 | [Tech stack](#tech-stack) | Every choice with the reason for it |
-| 6 | [Project structure](#project-structure) | Where each part of the code lives |
-| 7 | [Getting started](#getting-started) | Clone, install, run in about 6 commands |
-| 8 | [Environment variables](#environment-variables) | Config, and the two that trip people up |
-| 9 | [API documentation](#api-documentation) | All routes, callers, and auth schemes |
-| 10 | [Testing](#testing) | 272 tests and what CI enforces |
-| 11 | [Production deployment](#production-deployment) | AWS Lightsail and the CI/CD pipeline |
-| 12 | [Design decisions](#design-decisions) | Scalability, reliability, and security choices |
-| 13 | [Limitations](#limitations) | What it does not do |
-| 14 | [Future improvements](#future-improvements) | What is next |
-
-### Full documentation
-
-| Doc | Covers |
-| :-- | :-- |
-| **[docs/local_run.md](docs/local_run.md)** | Running the whole stack on your machine, with a verification step after each stage |
-| **[docs/api_docs.md](docs/api_docs.md)** | Every endpoint: auth scheme, request body, response body, status codes |
-| **[docs/testing_docs.md](docs/testing_docs.md)** | Test layout, the vitest config that makes it work, and the three CI jobs |
-| **[docs/prod_deploy_aws_lightsail.md](docs/prod_deploy_aws_lightsail.md)** | Full production deployment, from creating the instance to proving it works |
-| **[docs/observability.md](docs/observability.md)** | Wiring traces, metrics, and logs to Grafana Cloud over OTLP |
-
 ---
 
-## The problem
+## Table of Contents
 
-Inbox automation usually forces a bad choice:
-
-- Read everything yourself, or
-- Let a tool act on your account and hope it does not send something embarrassing.
-
-**SyncPilot splits the work.**
-
-| Who | Does what |
-| --- | --- |
-| The model | Reads every message and decides what it needs |
-| You | Approve anything irreversible, which in practice means sending mail |
-
-The approval step lives in Signal instead of another dashboard, because a
-dashboard is one more thing to remember to open.
+- [Features](#features)
+- [Architecture](#architecture)
+  - [How the services talk](#how-the-services-talk)
+  - [The two flows](#the-two-flows)
+- [Screenshots](#screenshots)
+- [Tech stack](#tech-stack)
+- [What problem it solves](#the-problem)
+- [Project structure](#project-structure)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [Full documentation](#full-documentation)
+- [API documentation](#api-documentation)
+- [Testing](#testing)
+- [Production deployment](#production-deployment)
+- [Design decisions](#design-decisions)
+  - [Scalability](#scalability)
+  - [Reliability](#reliability)
+  - [Security](#security)
+  - [Performance and usability](#performance-and-usability)
+- [Limitations](#limitations)
+- [Future improvements](#future-improvements)
+- [License](#license)
 
 ---
 
@@ -91,26 +61,6 @@ dashboard is one more thing to remember to open.
 | **Durable job history** | Queue state is mirrored into Postgres, so it survives Redis eviction. |
 | **No Gmail tokens stored** | Composio holds the OAuth connection. |
 
-**The seven decisions the agent can make:**
-
-`summarize_notify` &nbsp;·&nbsp; `draft_reply` &nbsp;·&nbsp; `escalate` &nbsp;·&nbsp;
-`apply_label` &nbsp;·&nbsp; `archive` &nbsp;·&nbsp; `snooze` &nbsp;·&nbsp; `ignore`
-
----
-
-## Screenshots
-
-<table>
-<tr>
-<td width="50%"><img src="previews/syncpilot_landing_page.png" alt="Landing page"><br/><sub><b>Landing page</b></sub></td>
-<td width="50%"><img src="previews/Dashboard_page.png" alt="Dashboard"><br/><sub><b>Dashboard with recent runs</b></sub></td>
-</tr>
-<tr>
-<td width="50%"><img src="previews/connection_setting_pop_up.png" alt="Connection settings"><br/><sub><b>Connecting Gmail and Signal</b></sub></td>
-<td width="50%"><img src="previews/mobile_signal_app_preview.jpeg" alt="Signal preview"><br/><sub><b>Brief and draft on Signal</b></sub></td>
-</tr>
-</table>
-
 ---
 
 ## Architecture
@@ -124,58 +74,9 @@ Two deployed pieces plus managed services:
 
 ### How the services talk
 
-```mermaid
-flowchart TB
-    sched["cron-job.org<br/>scheduler"]
-
-    subgraph vercel["Vercel (web/)"]
-        direction TB
-        cron["/api/cron/fetch-emails<br>/api/cron/poll-signal-replies"]
-        agent["/api/agent/run-job<br>/api/internal/sync-jobs"]
-    end
-
-    subgraph box["Lightsail box (server/)"]
-        direction TB
-        nginx["nginx :80<br>only public door"]
-        queue["Express intake :3001<br>BullMQ worker"]
-        redis[("Redis :6379<br>internal only")]
-        signal["signal-cli :8080<br>MODE=native"]
-    end
-
-    subgraph managed["Managed services"]
-        direction LR
-        neon[("Neon Postgres")]
-        composio["Composio to Gmail"]
-        groq["Groq"]
-    end
-
-    phone["Signal app<br>your phone"]
-
-    sched -->|"Bearer CRON_SECRET"| cron
-    cron -->|"POST /sync + x-secret"| nginx
-    nginx --> queue
-    queue <--> redis
-    queue -->|"POST + x-secret"| agent
-    agent -->|"send + X-Signal-Auth"| nginx
-    cron -->|"GET /v1/receive"| nginx
-    nginx --> signal
-    signal <-->|"encrypted"| phone
-    agent --> managed
-    cron --> neon
-
-    style vercel fill:none,stroke:#888,stroke-width:1px
-    style box fill:none,stroke:#888,stroke-width:1px
-    style managed fill:none,stroke:#888,stroke-width:1px
-```
-
-> **nginx is the only public door into the box.**
-> Redis publishes no port at all. The intake server and signal-cli bind to
-> `127.0.0.1`. nginx enforces an `X-Signal-Auth` header on the Signal routes,
-> which matters because that endpoint can send messages as you.
-
-> **The worker does not run the agent.**
-> It pops a job and calls back into the web app, which owns the Gmail, Groq, and
-> Signal code. The box is a queue and a Signal host, not a compute tier.
+<div align="center">
+  <img src="previews/syncpilot_HLD_Diagram.png" alt="SyncPilot high level design" width="900">
+</div>
 
 ### The two flows
 
@@ -213,6 +114,21 @@ sequenceDiagram
 
 ---
 
+## Screenshots
+
+<table>
+<tr>
+<td width="50%"><img src="previews/syncpilot_landing_page.png" alt="Landing page"><br/><sub><b>Landing page</b></sub></td>
+<td width="50%"><img src="previews/syncpilot_main_dashboard.png" alt="Dashboard"><br/><sub><b>Dashboard with recent runs</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="previews/syncpilot_connection_setting_page.png" alt="Connection settings"><br/><sub><b>Connecting Gmail and Signal</b></sub></td>
+<td width="50%"><img src="previews/mobile_signal_app_preview.jpeg" alt="Signal preview"><br/><sub><b>Brief and draft on Signal</b></sub></td>
+</tr>
+</table>
+
+---
+
 ## Tech stack
 
 | Layer | Stack | Why |
@@ -223,17 +139,36 @@ sequenceDiagram
 | Auth | <img src="https://cdn.simpleicons.org/google/4285F4" width="16" height="16" align="top" /> Auth.js v5 | Google sign in, JWT sessions |
 | Database | <img src="https://cdn.simpleicons.org/neon/00E599" width="16" height="16" align="top" /> Neon Postgres &nbsp; <img src="https://cdn.simpleicons.org/drizzle/C5F74F" width="16" height="16" align="top" /> Drizzle | Typed schema, generated migrations, HTTP driver |
 | Gmail | <img src="https://cdn.simpleicons.org/gmail/EA4335" width="16" height="16" align="top" /> Composio | Holds the OAuth connection so this app never stores Gmail tokens |
-| Model | Groq via Vercel AI SDK | `openai/gpt-oss-120b`, tool calling |
+| Model | <img src="https://avatars.githubusercontent.com/u/7464134?s=64" width="16" height="16" align="top" /> Groq via <img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="16" height="16" align="top" /> Vercel AI SDK | `openai/gpt-oss-120b`, tool calling |
 | Queue | <img src="https://cdn.simpleicons.org/redis/FF4438" width="16" height="16" align="top" /> BullMQ + Redis | Retries, backoff, concurrency, inspectable state |
 | Intake | <img src="https://cdn.simpleicons.org/express/000000/ffffff" width="16" height="16" align="top" /> Express 5 | Small enough that the whole server is ~520 lines |
 | Signal | <img src="https://cdn.simpleicons.org/signal/3A76F0" width="16" height="16" align="top" /> signal-cli-rest-api | Self hosted, native mode |
 | Proxy | <img src="https://cdn.simpleicons.org/nginx/009639" width="16" height="16" align="top" /> nginx | The only public door into the box, enforces the Signal auth header |
 | Containers | <img src="https://cdn.simpleicons.org/docker/2496ED" width="16" height="16" align="top" /> Docker Compose | Three containers in production, two for local development |
 | Billing | <img src="https://cdn.simpleicons.org/razorpay/3395FF" width="16" height="16" align="top" /> Razorpay | Subscriptions with signed, idempotent webhooks |
-| Observability | <img src="https://cdn.simpleicons.org/opentelemetry/000000/ffffff" width="16" height="16" align="top" /> OpenTelemetry &nbsp; <img src="https://cdn.simpleicons.org/grafana/F46800" width="16" height="16" align="top" /> Grafana Cloud | Structured JSON logs, traces and metrics over OTLP |
-| Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 272 tests across 31 files |
+| Observability | <img src="https://cdn.simpleicons.org/opentelemetry/000000/ffffff" width="16" height="16" align="top" /> OpenTelemetry + &nbsp; <img src="https://cdn.simpleicons.org/grafana/F46800" width="16" height="16" align="top" /> Grafana Cloud | Structured JSON logs, traces and metrics over OTLP |
+| Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 275 tests across 32 files |
 | CI/CD | <img src="https://cdn.simpleicons.org/githubactions/2088FF" width="16" height="16" align="top" /> GitHub Actions + GHCR | Build the image in CI, the server only pulls |
 | Hosting | <img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="16" height="16" align="top" /> Vercel &nbsp; + <img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/amazonwebservices/amazonwebservices-original.svg" width="16" height="16" align="top" /> AWS Lightsail (VPS) | Serverless for the app, one $7/month box for the queue and Signal |
+
+---
+
+## What problem it solves
+
+Inbox automation usually forces a bad choice:
+
+- Read everything yourself, or
+- Let a tool act on your account and hope it does not send something embarrassing.
+
+**SyncPilot splits the work.**
+
+| Who | Does what |
+| --- | --- |
+| The model | Reads every message and decides what it needs |
+| You | Approve anything irreversible, which in practice means sending mail |
+
+The approval step lives in Signal instead of another dashboard, because a
+dashboard is one more thing to remember to open.
 
 ---
 
@@ -272,9 +207,6 @@ docs/
 run.sh                  Runs web, intake server, and worker together
 docker-compose.yml      Redis and signal-cli for local development
 ```
-
-> Tests live at the repo root rather than beside the code so `server/` can be
-> deployed with a sparse git checkout that never pulls the test tree.
 
 ---
 
@@ -320,15 +252,17 @@ Every variable is documented inline in the example files:
 
 Copy them to `web/.env.local` and `server/.env.local`.
 
-**The two that cause most of the confusion:**
+---
 
-| Variable | Local | Production |
-| --- | --- | --- |
-| `REDIS_HOST` | `localhost` | `redis` (the compose service name) |
-| `INTAKE_SERVER_URL` | blank, runs inline | the server URL, uses the queue |
+## Full documentation
 
-> `REDIS_HOST` is worth calling out because getting it wrong **fails silently**.
-> `/health` still returns ok and jobs simply never run.
+| Doc | Covers |
+| :-- | :-- |
+| **[docs/local_run.md](docs/local_run.md)** | Running the whole stack on your machine, with a verification step after each stage |
+| **[docs/api_docs.md](docs/api_docs.md)** | Every endpoint: auth scheme, request body, response body, status codes |
+| **[docs/testing_docs.md](docs/testing_docs.md)** | Test layout, the vitest config that makes it work, and the three CI jobs |
+| **[docs/prod_deploy_aws_lightsail.md](docs/prod_deploy_aws_lightsail.md)** | Full production deployment, from creating the instance to proving it works |
+| **[docs/observability.md](docs/observability.md)** | Wiring traces, metrics, and logs to Grafana Cloud over OTLP |
 
 ---
 
@@ -358,22 +292,18 @@ Four callers, four auth schemes, no shared middleware. Each route checks its own
 **[docs/testing_docs.md](docs/testing_docs.md)**
 
 ```bash
-cd web && pnpm test        # 221 tests, 23 files
+cd web && pnpm test        # 224 tests, 24 files
 cd server && pnpm test     # 51 tests, 8 files
 ```
 
 | | Count |
 | --- | --- |
-| Total tests | **272** |
-| Test files | 31 |
+| Total tests | **275** |
+| Test files | 32 |
 | Runtime | Under 3 seconds |
 | Type | All unit tests, externals mocked at the module boundary |
 
 CI runs typecheck, tests, and lint on every push and pull request.
-
-> One CI job exists purely to fail the build if a `*.test.ts` file is written
-> outside `tests/`. Such a file matches no vitest include glob, would never run,
-> and CI would still pass green.
 
 ---
 
@@ -392,9 +322,6 @@ every stage.
 3. GitHub builds the Docker image and pushes it to GHCR
 4. GitHub connects over SSH, pulls the image, restarts the containers
 5. The workflow polls `/health` and pings Redis before it reports success
-
-> The box never builds anything. 1 GB of RAM is not enough for `pnpm install`
-> during a Docker build.
 
 ---
 
