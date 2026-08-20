@@ -117,15 +117,19 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=syncpilot-server-local
 ```
 
-Use a `-local` suffix on the service name. Otherwise your laptop and production
-write into the same service and you cannot tell them apart.
+Use a `-local` suffix so your laptop and production do not write into the same
+service.
 
-Start the app as usual. Each process logs `telemetry started` on boot.
+`./run.sh` sets the worker's `OTEL_SERVICE_NAME` itself, since the worker shares
+`server/.env.local` with the intake server. You get three services:
+`syncpilot-web-local`, `syncpilot-server-local`, `syncpilot-worker-local`.
+
+Each process logs `telemetry started` on boot.
 
 ## 5. Production: the Lightsail box
 
-Both the intake server and the worker read `server/.env` on the box. They share
-the file, so the service name has to be overridden per container.
+Both containers read `/opt/syncpilot/.env` through Compose `env_file`, so the
+service name has to be overridden for the worker.
 
 Add the shared values to `/opt/syncpilot/.env`:
 
@@ -140,13 +144,15 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=syncpilot-server
 ```
 
-Then override the name for the worker only, in the compose file:
+The container runs both processes from one command, so set the worker's name
+inline in `docker-compose.production.yml`:
 
 ```yaml
-  worker:
-    environment:
-      OTEL_SERVICE_NAME: syncpilot-worker
+    command: sh -c "pnpm start & OTEL_SERVICE_NAME=syncpilot-worker pnpm worker"
 ```
+
+Without this both processes report as `syncpilot-server` and their traces and
+logs are merged.
 
 Restart:
 

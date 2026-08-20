@@ -288,6 +288,13 @@ OTEL_SERVICE_NAME=syncpilot-server
 
 Save with `Ctrl+O`, `Enter`, `Ctrl+X`.
 
+The four `OTEL_*` lines are optional. Leave them blank and telemetry stays off.
+See **[observability.md](observability.md)** for where the values come from.
+
+`APP_ENV` is not needed here. Compose passes this file in as real environment
+variables, so the dotenv lookup inside the container finds nothing and the real
+values stand.
+
 **`REDIS_HOST` must be `redis`, not `localhost`.** This is the single most
 common mistake with this project, and it fails silently.
 
@@ -341,7 +348,7 @@ services:
       - redis
     ports:
       - "127.0.0.1:3001:3001"
-    command: sh -c "pnpm start & pnpm worker"
+    command: sh -c "pnpm start & OTEL_SERVICE_NAME=syncpilot-worker pnpm worker"
 
 volumes:
   redis-data:
@@ -357,7 +364,7 @@ cat docker-compose.production.yml
 
 **You should see** the full file with your username filled in.
 
-Four things about this file:
+Five things about this file:
 
 - **`worker` uses `image:`, not `build:`.** GitHub builds it; the box downloads
   it. Building here needs more RAM than you have.
@@ -367,6 +374,9 @@ Four things about this file:
 - **`127.0.0.1:` prefixes** keep those ports off the internet.
 - **`redis` has no `ports:` at all**, which is why `REDIS_HOST=localhost` cannot
   work.
+- **The command starts two processes in one container.** `OTEL_SERVICE_NAME` is
+  set inline for the worker so it reports separately from the intake server.
+  Drop that prefix if you are not sending telemetry.
 
 ## Step 10. Configure nginx
 
@@ -1042,7 +1052,7 @@ Set a budget alarm so a surprise cannot repeat: AWS Billing console →
 - **HTTPS.** This runs on plain HTTP to an IP address. Traffic between Vercel
   and the box is unencrypted. To fix it you need a domain name pointed at the
   static IP, then Certbot for a free certificate. Worth doing before real users.
-- **`server/.env` changes.** Deliberately not in GitHub, so still manual.
+- **`.env` changes on the box.** Deliberately not in GitHub, so still manual.
 - **nginx config changes.** Lives at `/etc/nginx/conf.d/syncpilot.conf` on the
   server, not in the repo.
 - **Database migrations.** There is no auto-migrate on deploy. Run
