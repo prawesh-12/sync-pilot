@@ -1,3 +1,6 @@
+// Must stay first or instrumentation never attaches.
+import "./telemetry";
+
 import express, { type Express, type Request, type Response } from "express";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
@@ -14,7 +17,6 @@ const QUEUE_DASHBOARD_PATH = "/admin/queues";
 
 const log = scopedLogger("SERVER");
 
-// Express API that receives sync jobs from Vercel cron and enqueues them.
 export function createServer() {
   const app = express();
   app.use(express.json());
@@ -30,8 +32,7 @@ export function createServer() {
   return app;
 }
 
-// Mounts the BullMQ dashboard behind Basic auth, but only when credentials are
-// configured — so it can never be exposed unauthenticated by accident.
+// Without both credentials the dashboard would be public.
 function mountQueueDashboard(app: Express) {
   if (!serverConfig.queueDashboardUser || !serverConfig.queueDashboardPassword) {
     log.warn(

@@ -1,24 +1,102 @@
-import pino, { type Logger } from "pino";
+import { logs, SeverityNumber, type LogAttributes } from "@opentelemetry/api-logs";
 
-// Structured app logger for the Next.js app. It writes JSON to stdout rather
-// than using a pino transport: transports run in worker threads, which are
-// fragile under Next.js serverless bundling and can drop buffered logs when a
-// short-lived function returns. On Vercel, ship these stdout logs to Better
-// Stack with a Log Drain (the long-running EC2 worker uses the direct
-// @logtail/pino transport instead — see server/logger.ts).
-//
-// Preserve the existing "[SCOPE]" convention by passing a scope to
-// scopedLogger(); it becomes a structured `scope` field.
-let rootLogger: Logger | null = null;
+const LOGGER_NAME = "syncpilot-web";
+const DEFAULT_LEVEL = "info";
+const SILENT_LEVEL = "silent";
 
-function getRootLogger(): Logger {
-  if (!rootLogger) {
-    rootLogger = pino({ level: process.env.LOG_LEVEL ?? "info" });
+const LEVELS = {
+  debug: { rank: 20, severityNumber: SeverityNumber.DEBUG },
+  info: { rank: 30, severityNumber: SeverityNumber.INFO },
+  warn: { rank: 40, severityNumber: SeverityNumber.WARN },
+  error: { rank: 50, severityNumber: SeverityNumber.ERROR },
+} as const;
+
+const SILENT_RANK = 100;
+
+type Level = keyof typeof LEVELS;
+type Fields = Record<string, unknown>;
+
+export type ScopedLogger = Record<
+  Level,
+  (fieldsOrMessage: Fields | string, message?: string) => void
+>;
+
+function readThreshold(): number {
+  const level = process.env.LOG_LEVEL?.trim().toLowerCase();
+
+  if (level === SILENT_LEVEL) {
+    return SILENT_RANK;
   }
 
-  return rootLogger;
+  if (level && level in LEVELS) {
+    return LEVELS[level as Level].rank;
+  }
+
+  return LEVELS[DEFAULT_LEVEL].rank;
 }
 
-export function scopedLogger(scope: string): Logger {
-  return getRootLogger().child({ scope });
+function toAttributeValue(value: unknown): string | number | boolean {
+  if (value instanceof Error) {
+    return value.stack ?? value.message;
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+
+  return JSON.stringify(value) ?? String(value);
+}
+
+function toAttributes(fields: Fields): LogAttributes {
+  const attributes: LogAttributes = {};
+
+  for (const [key, value] of Object.entries(fields)) {
+    attributes[key] = toAttributeValue(value);
+  }
+
+  return attributes;
+}
+
+function splitArguments(
+  fieldsOrMessage: Fields | string,
+  message?: string,
+): { body: string; attributes: LogAttributes } {
+  if (typeof fieldsOrMessage === "string") {
+    return { body: fieldsOrMessage, attributes: {} };
+  }
+
+  return { body: message ?? "", attributes: toAttributes(fieldsOrMessage) };
+}
+
+function write(
+  scope: string,
+  level: Level,
+  fieldsOrMessage: Fields | string,
+  message?: string,
+): void {
+  if (LEVELS[level].rank < readThreshold()) {
+    return;
+  }
+
+  const { body, attributes } = splitArguments(fieldsOrMessage, message);
+  const time = new Date().toISOString();
+
+  // stdout still works when the remote endpoint is down.
+  console.log(JSON.stringify({ time, level, scope, msg: body, ...attributes }));
+
+  logs.getLogger(LOGGER_NAME).emit({
+    severityNumber: LEVELS[level].severityNumber,
+    severityText: level.toUpperCase(),
+    body,
+    attributes: { scope, ...attributes },
+  });
+}
+
+export function scopedLogger(scope: string): ScopedLogger {
+  return {
+    debug: (fieldsOrMessage, message) => write(scope, "debug", fieldsOrMessage, message),
+    info: (fieldsOrMessage, message) => write(scope, "info", fieldsOrMessage, message),
+    warn: (fieldsOrMessage, message) => write(scope, "warn", fieldsOrMessage, message),
+    error: (fieldsOrMessage, message) => write(scope, "error", fieldsOrMessage, message),
+  };
 }

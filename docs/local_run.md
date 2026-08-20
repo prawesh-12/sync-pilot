@@ -252,6 +252,12 @@ docker compose up -d
 **Queue jobs stay in `wait`.** The worker is not running, or `REDIS_HOST` is
 wrong. Check with `docker exec syncpilot-redis-local redis-cli ping`.
 
+## Optional: send telemetry to Grafana Cloud
+
+Not needed for local work. If you want traces, metrics, and logs while
+developing, **[observability.md](observability.md)** covers the four `OTEL_*`
+variables and where to get their values.
+
 ## Stopping
 
 ```bash
