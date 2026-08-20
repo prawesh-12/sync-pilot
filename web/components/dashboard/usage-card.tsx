@@ -1,4 +1,9 @@
-import { getMonthlyUsage, getRecentAgentRuns, getUserPlan } from "@/db/queries";
+import {
+  getLifetimeUsage,
+  getMonthlyUsage,
+  getRecentAgentRuns,
+  getUserPlan,
+} from "@/db/queries";
 import { getUsageMonth } from "@/features/agent/usage";
 import { FREE_MONTHLY_TOKEN_LIMIT } from "@/config/plans";
 import { formatNumber, formatRelativeTime } from "@/lib/format";
@@ -12,9 +17,10 @@ const FULL_PERCENT = 100;
 
 export async function UsageCard({ userId }: UsageCardProps) {
   const month = getUsageMonth(new Date());
-  const [plan, usage, recentRuns] = await Promise.all([
+  const [plan, usage, lifetime, recentRuns] = await Promise.all([
     getUserPlan(userId),
     getMonthlyUsage(userId, month),
+    getLifetimeUsage(userId),
     getRecentAgentRuns(userId, 1),
   ]);
 
@@ -59,6 +65,24 @@ export async function UsageCard({ userId }: UsageCardProps) {
           Last run:{" "}
           <span className="text-sp-text">
             {lastRun ? formatRelativeTime(lastRun) : "Never"}
+          </span>
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1 border-t border-white/8 pt-3 text-xs text-sp-muted sm:flex-row sm:items-center sm:gap-4">
+        <span className="text-sp-muted">All time</span>
+        <span className="hidden text-sp-muted sm:inline">•</span>
+        <span>
+          Tokens:{" "}
+          <span className="text-sp-text">
+            {formatNumber(lifetime.totalTokensUsed)}
+          </span>
+        </span>
+        <span className="hidden text-sp-muted sm:inline">•</span>
+        <span>
+          Emails:{" "}
+          <span className="text-sp-text">
+            {formatNumber(lifetime.emailCount)}
           </span>
         </span>
       </div>

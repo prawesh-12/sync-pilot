@@ -1,19 +1,27 @@
-import { getRecentDecisions } from "@/db/queries";
+import { countDecisions, getDecisionsPage } from "@/db/queries";
+import { DecisionsPagination } from "@/components/agent/decisions-pagination";
 import { getDecisionBadgeClass, getDecisionLabel } from "@/lib/decisions";
 import { formatRelativeTime } from "@/lib/format";
 
 type AgentDecisionsListProps = {
   userId: string;
+  page: number;
 };
 
-type DecisionRow = Awaited<ReturnType<typeof getRecentDecisions>>[number];
+type DecisionRow = Awaited<ReturnType<typeof getDecisionsPage>>[number];
 
-const RECENT_DECISIONS_LIMIT = 50;
+// Roughly one viewport of rows, so the list never scrolls past the pager.
+export const DECISIONS_PER_PAGE = 10;
 
-export async function AgentDecisionsList({ userId }: AgentDecisionsListProps) {
-  const decisions = await getRecentDecisions(userId, RECENT_DECISIONS_LIMIT);
+const FIRST_PAGE = 1;
 
-  if (decisions.length === 0) {
+export async function AgentDecisionsList({
+  userId,
+  page,
+}: AgentDecisionsListProps) {
+  const total = await countDecisions(userId);
+
+  if (total === 0) {
     return (
       <p className="rounded-xl border border-dashed border-white/10 py-12 text-center text-sm text-sp-muted">
         No agent decisions yet.
@@ -21,12 +29,28 @@ export async function AgentDecisionsList({ userId }: AgentDecisionsListProps) {
     );
   }
 
+  const totalPages = Math.ceil(total / DECISIONS_PER_PAGE);
+  const currentPage = Math.min(Math.max(page, FIRST_PAGE), totalPages);
+  const decisions = await getDecisionsPage(
+    userId,
+    currentPage,
+    DECISIONS_PER_PAGE,
+  );
+
   return (
-    <ul className="flex flex-col gap-2">
-      {decisions.map((decision) => (
-        <DecisionRow key={decision.id} decision={decision} />
-      ))}
-    </ul>
+    <div className="flex flex-col">
+      <ul className="flex flex-col gap-2">
+        {decisions.map((decision) => (
+          <DecisionRow key={decision.id} decision={decision} />
+        ))}
+      </ul>
+
+      <p className="mt-3 text-center text-xs text-sp-muted">
+        Page {currentPage} of {totalPages} &middot; {total} decisions
+      </p>
+
+      <DecisionsPagination currentPage={currentPage} totalPages={totalPages} />
+    </div>
   );
 }
 
