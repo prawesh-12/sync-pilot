@@ -1,4 +1,7 @@
-import { Composio } from "@composio/core";
+import {
+    Composio,
+    ComposioLegacyConnectedAccountsEndpointRetiredError,
+} from "@composio/core";
 import { VercelProvider } from "@composio/vercel";
 import { getComposioConfig } from "@/config/env";
 import { withTimeoutAndRetry } from "@/lib/retry";
@@ -34,11 +37,28 @@ export async function initiateGmailConnection(
 ) {
     const composio = getComposio();
     const { gmailAuthConfigId } = getComposioConfig();
+    const shared = { callbackUrl, allowMultiple: true };
 
-    return composio.connectedAccounts.link(userId, gmailAuthConfigId, {
-        callbackUrl,
-        allowMultiple: true,
-    });
+    try {
+        // long_redirect_url skips the hosted page and lands on Google directly.
+        return await composio.connectedAccounts.initiate(
+            userId,
+            gmailAuthConfigId,
+            {
+                ...shared,
+                config: {
+                    authScheme: "OAUTH2",
+                    val: { status: "INITIALIZING", long_redirect_url: true },
+                },
+            },
+        );
+    } catch (error) {
+        if (!(error instanceof ComposioLegacyConnectedAccountsEndpointRetiredError)) {
+            throw error;
+        }
+
+        return composio.connectedAccounts.link(userId, gmailAuthConfigId, shared);
+    }
 }
 
 // Returns the most recently connected ACTIVE Gmail account, which is the one
