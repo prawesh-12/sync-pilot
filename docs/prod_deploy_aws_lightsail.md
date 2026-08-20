@@ -338,9 +338,9 @@ services:
     volumes:
       - redis-data:/data
 
-  worker:
+  intake:
     image: ghcr.io/YOUR_USER/syncpilot-server:latest
-    container_name: syncpilot-worker
+    container_name: syncpilot-intake
     restart: unless-stopped
     env_file:
       - .env
@@ -348,7 +348,19 @@ services:
       - redis
     ports:
       - "127.0.0.1:3001:3001"
-    command: sh -c "pnpm start & OTEL_SERVICE_NAME=syncpilot-worker pnpm worker"
+    command: pnpm start
+
+  worker:
+    image: ghcr.io/YOUR_USER/syncpilot-server:latest
+    container_name: syncpilot-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      OTEL_SERVICE_NAME: syncpilot-worker
+    depends_on:
+      - redis
+    command: pnpm worker
 
 volumes:
   redis-data:
@@ -364,7 +376,7 @@ cat docker-compose.production.yml
 
 **You should see** the full file with your username filled in.
 
-Five things about this file:
+Six things about this file:
 
 - **`worker` uses `image:`, not `build:`.** GitHub builds it; the box downloads
   it. Building here needs more RAM than you have.
@@ -374,9 +386,12 @@ Five things about this file:
 - **`127.0.0.1:` prefixes** keep those ports off the internet.
 - **`redis` has no `ports:` at all**, which is why `REDIS_HOST=localhost` cannot
   work.
-- **The command starts two processes in one container.** `OTEL_SERVICE_NAME` is
-  set inline for the worker so it reports separately from the intake server.
-  Drop that prefix if you are not sending telemetry.
+- **`intake` and `worker` are separate containers from the same image.** One
+  process each, so if either dies Docker restarts that one. Running both in a
+  single container hides a dead worker: the container stays up on the surviving
+  process and every health check still passes.
+- **Only `intake` publishes a port.** The worker takes jobs from Redis and
+  needs no inbound traffic.
 
 ## Step 10. Configure nginx
 
@@ -626,8 +641,8 @@ Confirm on the server:
 ssh -i ~/.ssh/syncpilot_deploy -o IdentitiesOnly=yes ubuntu@YOUR_STATIC_IP 'docker ps'
 ```
 
-**You should see three containers:** `syncpilot-worker`, `syncpilot-redis`, and
-`signal-api` (marked healthy).
+**You should see four containers:** `syncpilot-intake`, `syncpilot-worker`,
+`syncpilot-redis`, and `signal-api` (marked healthy).
 
 <details>
 <summary>Fallback: build on the box by hand</summary>
@@ -748,6 +763,7 @@ Want: anything that is not 401.
 
 ```bash
 docker exec syncpilot-worker sh -c 'echo $REDIS_HOST'
+docker exec syncpilot-intake sh -c 'echo $REDIS_HOST'
 docker exec syncpilot-redis redis-cli ping
 ```
 
@@ -829,6 +845,7 @@ docker compose -f docker-compose.production.yml up -d --force-recreate worker
 ## Read logs
 
 ```bash
+docker logs -f syncpilot-intake
 docker logs -f syncpilot-worker
 docker logs -f signal-api
 ```
@@ -927,7 +944,7 @@ nginx is fine; the container behind it is not answering.
 ```bash
 docker ps
 curl -v http://127.0.0.1:3001/health
-docker logs syncpilot-worker --tail 50
+docker logs syncpilot-intake --tail 50
 ```
 
 If `curl` prints nothing at all, the container is not up.
@@ -973,8 +990,24 @@ The container was recreated and had not finished booting. The workflow polls for
 60 seconds, so if it still times out, something is genuinely wrong with startup:
 
 ```bash
-docker logs syncpilot-worker --tail 40
+docker logs syncpilot-intake --tail 40
 ```
+
+## The worker is not processing jobs
+
+`intake` and `worker` are separate containers. `/health` only proves `intake` is
+up.
+
+```bash
+docker ps --filter name=syncpilot-worker
+docker logs syncpilot-worker --tail 50
+docker inspect -f '{{.State.Status}} restarts={{.RestartCount}}' syncpilot-worker
+```
+
+Expect `running restarts=0`. A climbing restart count means the worker crashes
+on boot, usually a missing `WEB_APP_URL` or an unreachable Redis.
+
+Jobs piling up in `wait` at `/admin/queues` with a healthy `intake` points here.
 
 ## A container keeps restarting
 

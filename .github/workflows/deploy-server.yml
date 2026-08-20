@@ -85,7 +85,7 @@ jobs:
             cd ~/syncpilot/server
             echo "${{ secrets.GITHUB_TOKEN }}" \
               | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker compose -f docker-compose.production.yml pull worker
+            docker compose -f docker-compose.production.yml pull intake worker
             docker compose -f docker-compose.production.yml up -d
             docker image prune -f
             # A recreated container needs time to bind the port, so poll rather
@@ -97,10 +97,20 @@ jobs:
               fi
               if [ "$i" -eq 30 ]; then
                 echo "intake server did not come up within 60s"
-                docker logs syncpilot-worker --tail 40
+                docker logs syncpilot-intake --tail 40
                 exit 1
               fi
               sleep 2
             done
             # /health passes even when Redis is down, so assert on the queue too.
             docker exec syncpilot-redis redis-cli ping
+            # The worker publishes no port, so assert on the container instead.
+            # Without this a worker that dies on boot still deploys green.
+            sleep 5
+            worker_state=$(docker inspect -f '{{.State.Status}}' syncpilot-worker)
+            worker_restarts=$(docker inspect -f '{{.RestartCount}}' syncpilot-worker)
+            echo "worker: $worker_state, restarts: $worker_restarts"
+            if [ "$worker_state" != "running" ] || [ "$worker_restarts" -gt 0 ]; then
+              docker logs syncpilot-worker --tail 40
+              exit 1
+            fi

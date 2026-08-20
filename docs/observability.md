@@ -144,14 +144,16 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=syncpilot-server
 ```
 
-The container runs both processes from one command, so set the worker's name
-inline in `docker-compose.production.yml`:
+The worker is its own container, so give it its own name in
+`docker-compose.production.yml`:
 
 ```yaml
-    command: sh -c "pnpm start & OTEL_SERVICE_NAME=syncpilot-worker pnpm worker"
+  worker:
+    environment:
+      OTEL_SERVICE_NAME: syncpilot-worker
 ```
 
-Without this both processes report as `syncpilot-server` and their traces and
+Without this both containers report as `syncpilot-server` and their traces and
 logs are merged.
 
 Restart:
