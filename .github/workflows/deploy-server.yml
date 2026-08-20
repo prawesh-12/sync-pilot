@@ -8,7 +8,10 @@ on:
     branches: [main]
     paths:
       - "server/**"
-      - ".github/workflows/deploy-server.yml"
+      # Files inside server/ that never reach the image, so they must not deploy.
+      - "!server/.env.example"
+      - "!server/signal-cli-config/**"
+      - "!server/**/*.md"
   workflow_dispatch:
 
 # Never let two deploys race on the same host.
