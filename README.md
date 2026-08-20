@@ -1,318 +1,605 @@
-# SyncPilot — AI Agent
+<div align="center">
 
-SyncPilot is an AI agent for your inbox. It reads every new Gmail message,
-**triages what matters**, takes action (summarize, archive, label, escalate,
-snooze, or **draft a reply**), and briefs you in the **Signal** messaging app.
-You stay in control: reply on Signal to **approve, send, or revise** a draft.
+# SyncPilot Agent
 
-In short:
+**SyncPilot reads your Gmail, decides what each email needs, and messages you on Signal.**
 
-1. Connect one or more Gmail accounts.
-2. Link Signal by scanning a QR code, and save your sender/recipient numbers.
-3. On each cron tick, SyncPilot reads new email, the agent decides what to do
-   with each one, and the results — summaries and drafts — land in Signal.
-4. Reply on Signal with a ref code to confirm, send, or revise a drafted reply.
+**It never sends an email without your approval.**
 
----
+</div>
 
-# Architecture
-SyncPilot runs as two cooperating pieces:
+```mermaid
+flowchart LR
+    email["New email"] --> agent["Agent reads it and<br/>picks one action"]
+    agent --> signal["You get a message<br/>on Signal"]
+    signal --> reply{"You reply"}
+    reply -->|"A3X9 send"| out["Email is sent"]
+    reply -->|"A3X9 no"| drop["Draft is discarded"]
+    reply -->|"A3X9 make it shorter"| rewrite["Draft is rewritten"]
+    rewrite --> signal
+```
 
-- **Web app (`web/`, Next.js on Vercel)** — UI, auth, integrations, the agent
-  logic (Gmail via Composio, triage via Groq, Signal send/receive), and the
-  cron endpoints.
-- **Intake server + worker (`server/`, Express + BullMQ + Redis on EC2)** —
-  optional scale-out path. The `fetch-emails` cron enqueues one job per Gmail
-  account to this worker pool, and each worker calls back into the web app to
-  run the agent for that account. With no intake server configured, the cron
-  runs accounts inline (fine for local/single-account use).
+Every few minutes it checks for new mail. Each message gets exactly one action:
+summarize, archive, label, escalate, snooze, or draft a reply.
 
-Signal connectivity is provided by a self-hosted
-[signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api)
-container running in **native** mode.
+Only drafts need you. They arrive with a 4 character ref code, and nothing is
+sent until you answer.
 
 ---
 
-## What the agent does
+## Contents
 
-On each run, every new email is read and given **one decision**:
+### In this README
 
-| Decision | Meaning |
+| # | Section | What you get |
+| :-- | :-- | :-- |
+| 1 | [The problem](#the-problem) | Why this exists and what it refuses to automate |
+| 2 | [Features](#features) | The seven decisions the agent can make |
+| 3 | [Screenshots](#screenshots) | Landing page, dashboard, Signal on mobile |
+| 4 | [Architecture](#architecture) | Service diagram and both request flows |
+| 5 | [Tech stack](#tech-stack) | Every choice with the reason for it |
+| 6 | [Project structure](#project-structure) | Where each part of the code lives |
+| 7 | [Getting started](#getting-started) | Clone, install, run in about 6 commands |
+| 8 | [Environment variables](#environment-variables) | Config, and the two that trip people up |
+| 9 | [API documentation](#api-documentation) | All routes, callers, and auth schemes |
+| 10 | [Testing](#testing) | 266 tests and what CI enforces |
+| 11 | [Production deployment](#production-deployment) | AWS Lightsail and the CI/CD pipeline |
+| 12 | [Design decisions](#design-decisions) | Scalability, reliability, and security choices |
+| 13 | [Limitations](#limitations) | What it does not do |
+| 14 | [Future improvements](#future-improvements) | What is next |
+
+### Full documentation
+
+| Doc | Covers |
+| :-- | :-- |
+| **[docs/local_run.md](docs/local_run.md)** | Running the whole stack on your machine, with a verification step after each stage |
+| **[docs/api_docs.md](docs/api_docs.md)** | Every endpoint: auth scheme, request body, response body, status codes |
+| **[docs/testing_docs.md](docs/testing_docs.md)** | Test layout, the vitest config that makes it work, and the three CI jobs |
+| **[docs/prod_deploy_aws_lightsail.md](docs/prod_deploy_aws_lightsail.md)** | Full production deployment, from creating the instance to proving it works |
+
+---
+
+## The problem
+
+Inbox automation usually forces a bad choice:
+
+- Read everything yourself, or
+- Let a tool act on your account and hope it does not send something embarrassing.
+
+**SyncPilot splits the work.**
+
+| Who | Does what |
 | --- | --- |
-| `summarize_notify` | Condense the email and send a brief to Signal |
-| `draft_reply` | Draft a reply and send it to Signal for approval |
-| `escalate` | Flag as urgent / needs attention |
-| `apply_label` | Apply a Gmail label |
-| `archive` | Archive low-value mail |
-| `snooze` | Defer for later |
-| `ignore` | No action (noise) |
+| The model | Reads every message and decides what it needs |
+| You | Approve anything irreversible, which in practice means sending mail |
 
-Drafted replies are not sent automatically. SyncPilot sends the draft to Signal
-with a short **ref code**; you reply on Signal to **confirm**, **send**, or
-**revise** it. A second cron (`poll-signal-replies`) drains those replies and
-applies your decision.
+The approval step lives in Signal instead of another dashboard, because a
+dashboard is one more thing to remember to open.
 
 ---
 
-## Tech Stack
+## Features
 
-- **Next.js 16 + React 19** (App Router) — web app
-- **Auth.js (NextAuth v5)** — Google sign-in
-- **Composio** — Gmail connection and actions (`@composio/core`, `@composio/vercel`)
-- **Vercel AI SDK + Groq** — triage/summarization (`@ai-sdk/groq`, model `openai/gpt-oss-120b`)
-- **Drizzle ORM + PostgreSQL** (Neon in production) — integrations, runs, decisions, billing
-- **signal-cli-rest-api** — Signal send/receive (Docker)
-- **Express + BullMQ + Redis** (`server/`) — EC2 intake server and worker pool
-- **Razorpay** — subscription billing
-- **cron-job.org** — external scheduler for the cron endpoints
+| Feature | Detail |
+| --- | --- |
+| **One decision per email** | The model must call exactly one tool per message. The tool call *is* the decision, so there is no free text to parse into an action. |
+| **Human approval for sends** | Drafts go out with a 4 character ref code and wait. Nothing is sent without a reply. |
+| **Reply from Signal** | `send`, `no`, or any other text, which is treated as rewrite instructions. |
+| **Multiple Gmail accounts** | Per user, processed concurrently. |
+| **Two execution modes** | Inline for local and single account use, or a queued worker pool for scale. One environment variable switches between them. |
+| **Durable job history** | Queue state is mirrored into Postgres, so it survives Redis eviction. |
+| **No Gmail tokens stored** | Composio holds the OAuth connection. |
 
----
+**The seven decisions the agent can make:**
 
-## Project Setup (Locally)
-
-> The web app lives in `web/`; the optional worker lives in `server/`. There is
-> no root workspace — run `pnpm` inside the package you're working on.
-
-### 1) Install prerequisites
-
-- Node.js 20 LTS or newer (the `server/` worker targets Node 22)
-- pnpm (run `corepack enable`, or see https://pnpm.io/installation)
-- PostgreSQL (or a Neon connection string)
-- Docker + Docker Compose (for signal-cli)
-- A Google Cloud account (for Google sign-in)
-- A [Composio](https://composio.dev) account (for Gmail)
-- A Groq API key
-- Signal app on your phone (for QR linking)
-
-### 2) Clone and install
-
-```bash
-git clone https://github.com/prawesh-12/sync-pilot.git
-cd sync-pilot/web
-pnpm install
-```
-
-### 3) Create local environment file
-
-```bash
-cp .env.example .env.local
-```
-
-Open `.env.local` and fill every required value. The sections below cover each.
-
-### 4) PostgreSQL and `DATABASE_URL`
-
-Start PostgreSQL and create a database, then set `DATABASE_URL`:
-
-```bash
-sudo service postgresql start
-sudo -u postgres createdb syncpilot
-```
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/syncpilot
-```
-
-### 5) Auth.js (Google sign-in)
-
-Generate an auth secret and create a Google OAuth client for **login**:
-
-```bash
-openssl rand -base64 33   # -> AUTH_SECRET
-```
-
-In Google Cloud Console, create an OAuth Client ID (Web application) with:
-
-```text
-Authorised redirect URI:
-http://localhost:3000/api/auth/callback/google
-```
-
-```env
-AUTH_SECRET=<generated>
-AUTH_GOOGLE_ID=<google-oauth-client-id>
-AUTH_GOOGLE_SECRET=<google-oauth-client-secret>
-```
-
-### 6) Composio (Gmail)
-
-Gmail access is handled by Composio, not by a direct Google token.
-
-1. Create a Composio account and copy your API key.
-2. In the Composio dashboard, create a **Gmail** auth config and copy its ID.
-
-```env
-COMPOSIO_API_KEY=<composio-api-key>
-COMPOSIO_GMAIL_AUTH_CONFIG_ID=<gmail-auth-config-id>
-```
-
-### 7) Encryption key
-
-```bash
-openssl rand -hex 32   # 64 hex chars
-```
-
-```env
-ENCRYPTION_KEY=<paste-generated-hex>
-```
-
-### 8) Groq and cron secrets
-
-```env
-GROQ_API_KEY=...
-GROQ_MODEL=openai/gpt-oss-120b
-
-CRON_SECRET=<any-strong-random-string>
-```
-
-### 9) Signal REST service (Docker)
-
-```bash
-cd ../server/signal-cli-config
-docker compose up -d
-cd ../../web
-```
-
-```env
-SIGNAL_CLI_REST_URL=http://localhost:8080
-# Leave SIGNAL_AUTH_TOKEN empty for local; set it in production so the proxy in
-# front of signal-cli rejects requests without a matching X-Signal-Auth header.
-SIGNAL_AUTH_TOKEN=
-```
-
-### 10) Run database migrations
-
-```bash
-pnpm db:migrate
-```
-
-> Migrations are applied manually — there is **no auto-migrate on deploy**.
-> After generating new migrations, run `pnpm db:migrate` against each
-> environment (including production) or queries will fail on missing tables.
-
-### 11) Start the app
-
-```bash
-pnpm dev
-```
-
-Open http://localhost:3000
-
-### 12) First-time in-app setup
-
-1. Sign in with Google.
-2. Open **Dashboard → Connection Setting**.
-3. Click **Connect Gmail** and complete the Composio flow (repeat to add more
-   accounts).
-4. Click **Generate Signal QR**.
-5. In the Signal mobile app: **Linked Devices → scan QR**.
-6. Save sender and recipient phone numbers in E.164 format (e.g. `+919279581041`).
-
-### 13) Trigger the agent manually
-
-```bash
-curl -X POST "http://localhost:3000/api/cron/fetch-emails" \
-    -H "Authorization: Bearer <CRON_SECRET>"
-```
-
-With no `INTAKE_SERVER_URL` set, the run is inline and returns:
-
-```json
-{ "mode": "inline", "accountsProcessed": 1, "successfulRuns": 1, "failedRuns": 0, "runs": [ ... ] }
-```
-
-With an intake server configured it enqueues instead:
-
-```json
-{ "mode": "queued", "accountsQueued": 1 }
-```
-
-### 14) Quick troubleshooting
-
-- `401` on a cron route: `CRON_SECRET` mismatch in the `Authorization` header.
-- `500` on a cron/worker route: usually unapplied DB migrations (run `pnpm db:migrate`).
-- Gmail connect lands on a Composio page: expected — it's the hosted OAuth flow.
-- No Signal messages: verify the QR link, sender/recipient numbers, and `SIGNAL_CLI_REST_URL`.
-- No emails processed: confirm the signed-in user has both a Gmail account and Signal connected.
+`summarize_notify` &nbsp;·&nbsp; `draft_reply` &nbsp;·&nbsp; `escalate` &nbsp;·&nbsp;
+`apply_label` &nbsp;·&nbsp; `archive` &nbsp;·&nbsp; `snooze` &nbsp;·&nbsp; `ignore`
 
 ---
 
-## Cron jobs
+## Screenshots
 
-Both routes are protected by `Authorization: Bearer <CRON_SECRET>` and accept
-GET or POST. Schedule them externally (this project uses
-[cron-job.org](https://cron-job.org)).
+<table>
+<tr>
+<td width="50%"><img src="web/public/previews/syncpilot_landing_page.png" alt="Landing page"><br/><sub><b>Landing page</b></sub></td>
+<td width="50%"><img src="web/public/previews/Dashboard_page.png" alt="Dashboard"><br/><sub><b>Dashboard with recent runs</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="web/public/previews/connection_setting_pop_up.png" alt="Connection settings"><br/><sub><b>Connecting Gmail and Signal</b></sub></td>
+<td width="50%"><img src="web/public/previews/mobile_signal_app_preview.jpeg" alt="Signal preview"><br/><sub><b>Brief and draft on Signal</b></sub></td>
+</tr>
+</table>
 
-| Route | Purpose | Suggested interval |
+---
+
+## Architecture
+
+Two deployed pieces plus managed services:
+
+| Piece | Runs on | Responsibility |
 | --- | --- | --- |
-| `/api/cron/fetch-emails` | Read new email → agent triage → summaries/drafts to Signal | every 5–15 min |
-| `/api/cron/poll-signal-replies` | Drain Signal replies and apply confirm/send/revise | every 1 min |
+| **`web/`** | Vercel | UI, auth, and all agent logic (Gmail via Composio, triage via Groq, Signal send and receive) |
+| **`server/`** | AWS Lightsail, $7/month | Express intake API, BullMQ worker, Redis, self hosted signal-cli |
 
-For production scheduling on cron-job.org:
+### How the services talk
 
-- URL: `https://<your-domain>/api/cron/<route>`
-- Method: POST
-- Header: `Authorization: Bearer <CRON_SECRET>`
+```mermaid
+flowchart LR
+    phone["Signal app<br/>(your phone)"]
+    sched["cron-job.org<br/>(external scheduler)"]
 
-If testing from local dev, expose the app publicly (e.g. via a tunnel) so
-cron-job.org can reach the endpoints.
+    subgraph vercel["Vercel (web/)"]
+        direction TB
+        ui["Dashboard<br/>(Auth.js + Google)"]
+        fetch["/api/cron/fetch-emails"]
+        poll["/api/cron/poll-signal-replies"]
+        runjob["/api/agent/run-job"]
+        status["/api/internal/sync-jobs"]
+    end
+
+    subgraph box["Lightsail box (server/)"]
+        direction TB
+        nginx["nginx :80<br/>(only public door)"]
+        intake["Express intake :3001"]
+        redis[("Redis :6379<br/>internal only")]
+        worker["BullMQ worker<br/>concurrency 10"]
+        signal["signal-cli-rest-api :8080<br/>MODE=native"]
+    end
+
+    subgraph managed["Managed services"]
+        direction TB
+        neon[("Neon Postgres")]
+        composio["Composio to Gmail"]
+        groq["Groq<br/>(triage model)"]
+        razorpay["Razorpay"]
+    end
+
+    sched -->|"Bearer CRON_SECRET"| fetch
+    sched -->|"Bearer CRON_SECRET"| poll
+
+    fetch -->|"POST /sync + x-secret"| nginx
+    nginx --> intake
+    intake -->|"addBulk"| redis
+    redis --> worker
+    worker -->|"POST + x-secret"| runjob
+    worker -->|"job lifecycle"| status
+
+    runjob -->|"read / label / archive"| composio
+    runjob -->|"one decision per email"| groq
+    runjob -->|"send + X-Signal-Auth"| nginx
+    poll -->|"GET /v1/receive"| nginx
+    nginx --> signal
+    signal <-->|"end-to-end encrypted"| phone
+
+    ui --> neon
+    ui --> razorpay
+    fetch --> neon
+    poll --> neon
+    runjob --> neon
+    status --> neon
+
+    style vercel fill:none,stroke:#888,stroke-width:1px
+    style box fill:none,stroke:#888,stroke-width:1px
+    style managed fill:none,stroke:#888,stroke-width:1px
+```
+
+> **nginx is the only public door into the box.**
+> Redis publishes no port at all. The intake server and signal-cli bind to
+> `127.0.0.1`. nginx enforces an `X-Signal-Auth` header on the Signal routes,
+> which matters because that endpoint can send messages as you.
+
+> **The worker does not run the agent.**
+> It pops a job and calls back into the web app, which owns the Gmail, Groq, and
+> Signal code. The box is a queue and a Signal host, not a compute tier.
+
+### The two flows
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as cron-job.org
+    participant V as Vercel
+    participant N as nginx
+    participant Q as Redis + worker
+    participant G as signal-cli
+    participant P as Your phone
+
+    note over S,P: Outbound, triage new email
+    S->>V: GET /api/cron/fetch-emails
+    V->>V: one job per active Gmail account
+    V->>N: POST /sync { jobs }
+    N->>Q: enqueue (BullMQ)
+    V-->>S: 200 { mode: queued }
+    Q->>V: POST /api/agent/run-job
+    V->>V: Composio reads mail, Groq picks one action
+    V->>N: POST /v2/send (brief or draft + ref code)
+    N->>G: proxy
+    G->>P: Signal message
+
+    note over S,P: Inbound, you approve the draft
+    P->>G: reply "A3X9 send"
+    S->>V: GET /api/cron/poll-signal-replies
+    V->>N: GET /signal/v1/receive
+    N->>G: proxy
+    G-->>V: pending replies
+    V->>V: match ref code, apply decision
+    V->>V: Composio sends the email
+```
 
 ---
 
-## Scaling with the EC2 worker (optional)
+## Tech stack
 
-To fan out across many Gmail accounts, run the `server/` package (Express +
-BullMQ + Redis) on a host such as EC2:
-
-1. Set `SYNC_SECRET` (shared with the web app), `WEB_APP_URL`, and
-   `REDIS_HOST`/`REDIS_PORT` in `server/.env` (see `server/.env.example`).
-2. Bring up Redis + the worker with `docker-compose.production.yml` (written
-   by hand — see `docs.md` Part 2). When running in Docker Compose,
-   `REDIS_HOST` must be the Redis **service name** (`redis`), not `localhost`.
-3. In the web app, set `INTAKE_SERVER_URL` to the server's base URL and
-   `SYNC_SECRET` to the same value.
-
-The `fetch-emails` cron then enqueues one job per account; each worker calls
-`POST /api/agent/run-job` to run the agent and reports lifecycle to
-`POST /api/internal/sync-jobs`.
-
----
-
-## API Endpoints
-
-**Cron (Bearer `CRON_SECRET`)**
-- `GET|POST /api/cron/fetch-emails` — read → triage → summaries/drafts to Signal
-- `GET|POST /api/cron/poll-signal-replies` — drain and apply Signal replies
-
-**Auth & integrations**
-- `GET|POST /api/auth/[...nextauth]` — Auth.js (Google sign-in)
-- `GET /api/auth/status` — current auth/integration status
-- `GET /api/auth/composio` — start the Gmail connect flow
-- `GET /api/auth/composio/callback` — finish Gmail connect and store the account
-- `GET /api/signal/qr` — QR image from signal-cli for linking Signal
-
-**Agent (machine-authenticated with `SYNC_SECRET` via `x-secret`)**
-- `POST /api/agent/run` — manual agent task (session-authenticated)
-- `POST /api/agent/run-job` — run the agent for one account (called by the worker)
-- `POST /api/internal/sync-jobs` — durable job-status sink (called by the worker)
-
-**Billing**
-- `POST /api/billing/subscribe` — create a Razorpay subscription
-- `POST /api/webhooks/razorpay` — Razorpay webhook (signature-verified)
+| Layer | Stack | Why |
+| :-- | :-- | :-- |
+| Web | <img src="https://cdn.simpleicons.org/nextdotjs/000000/ffffff" width="16" height="16" align="top" /> Next.js 16 &nbsp;+ <img src="https://cdn.simpleicons.org/react/61DAFB" width="16" height="16" align="top" /> React 19 | App Router, route handlers double as the API |
+| Language | <img src="https://cdn.simpleicons.org/typescript/3178C6" width="16" height="16" align="top" /> TypeScript 5 | Strict mode, `tsc --noEmit` gates every push |
+| Styling | <img src="https://cdn.simpleicons.org/tailwindcss/06B6D4" width="16" height="16" align="top" /> Tailwind CSS 4 | With shadcn and Radix primitives |
+| Auth | <img src="https://cdn.simpleicons.org/google/4285F4" width="16" height="16" align="top" /> Auth.js v5 | Google sign in, JWT sessions |
+| Database | <img src="https://cdn.simpleicons.org/neon/00E599" width="16" height="16" align="top" /> Neon Postgres &nbsp; <img src="https://cdn.simpleicons.org/drizzle/C5F74F" width="16" height="16" align="top" /> Drizzle | Typed schema, generated migrations, HTTP driver |
+| Gmail | <img src="https://cdn.simpleicons.org/gmail/EA4335" width="16" height="16" align="top" /> Composio | Holds the OAuth connection so this app never stores Gmail tokens |
+| Model | Groq via Vercel AI SDK | `openai/gpt-oss-120b`, tool calling |
+| Queue | <img src="https://cdn.simpleicons.org/redis/FF4438" width="16" height="16" align="top" /> BullMQ + Redis | Retries, backoff, concurrency, inspectable state |
+| Intake | <img src="https://cdn.simpleicons.org/express/000000/ffffff" width="16" height="16" align="top" /> Express 5 | Small enough that the whole server is ~520 lines |
+| Signal | <img src="https://cdn.simpleicons.org/signal/3A76F0" width="16" height="16" align="top" /> signal-cli-rest-api | Self hosted, native mode |
+| Proxy | <img src="https://cdn.simpleicons.org/nginx/009639" width="16" height="16" align="top" /> nginx | The only public door into the box, enforces the Signal auth header |
+| Containers | <img src="https://cdn.simpleicons.org/docker/2496ED" width="16" height="16" align="top" /> Docker Compose | Three containers in production, two for local development |
+| Billing | <img src="https://cdn.simpleicons.org/razorpay/3395FF" width="16" height="16" align="top" /> Razorpay | Subscriptions with signed, idempotent webhooks |
+| Logging | <img src="https://cdn.simpleicons.org/pino/687634/A3C14A" width="16" height="16" align="top" /> pino &nbsp; <img src="https://cdn.simpleicons.org/betterstack/000000/ffffff" width="16" height="16" align="top" /> Better Stack | Structured JSON, scoped loggers |
+| Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 266 tests across 30 files |
+| CI/CD | <img src="https://cdn.simpleicons.org/githubactions/2088FF" width="16" height="16" align="top" /> GitHub Actions + GHCR | Build the image in CI, the server only pulls |
+| Hosting | <img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="16" height="16" align="top" /> Vercel &nbsp; + <img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/amazonwebservices/amazonwebservices-original.svg" width="16" height="16" align="top" /> AWS Lightsail (VPS) | Serverless for the app, one $7/month box for the queue and Signal |
 
 ---
 
-## Notes
+## Project structure
 
-- The agent runs only for users who have both Gmail and Signal connected.
-- Multiple Gmail accounts per user are supported; each is one job/run.
-- Drafted replies require explicit Signal confirmation before being sent.
-- Run history and per-email decisions are stored and shown on the Dashboard.
+```
+web/                    Next.js app, deployed to Vercel
+  app/api/              Route handlers (the API surface)
+  features/
+    agent/              Triage loop, tools, result parsing
+    agent/tools/        One file per decision the model can make
+    ai/                 Groq client, summarise, rewrite
+    gmail/              Gmail actions, parsing, labels
+    signal/             Send, receive, reply parsing, routing
+  db/                   Drizzle schema and queries
+  lib/                  Encryption, retry, timing safe compare
+  config/               Env validation, plan limits
+
+server/                 Deployed to Lightsail
+  server.ts             Express intake API
+  worker.ts             BullMQ consumer
+  queue.ts              Queue setup and job options
+  agent.ts              Calls back into the web app
+
+tests/
+  web_test/             Mirrors web/
+  server_test/          Mirrors server/
+
+docs/
+  local_run.md                    Run it on your machine
+  api_docs.md                     Every endpoint
+  testing_docs.md                 Test suite and CI
+  prod_deploy_aws_lightsail.md    Production deployment
+
+docker-compose.yml      Redis and signal-cli for local development
+```
+
+> Tests live at the repo root rather than beside the code so `server/` can be
+> deployed with a sparse git checkout that never pulls the test tree.
+
+---
+
+## Getting started
+
+Full walkthrough: **[docs/local_run.md](docs/local_run.md)**
+
+```bash
+git clone https://github.com/your-username/your-repo.git syncpilot
+cd syncpilot
+pnpm install --dir web
+pnpm install --dir server
+
+docker compose up -d          # Redis and signal-cli
+
+cp web/.env.example web/.env.local
+# fill it in, then:
+cd web && pnpm db:migrate && pnpm dev
+```
+
+**Two things to know:**
+
+- `docker-compose.yml` deliberately runs only the supporting services. The web
+  app and intake server run with pnpm so you keep hot reload.
+- **Postgres is not in the compose file.** `web/db/client.ts` uses the Neon HTTP
+  driver, which speaks HTTP to a Neon endpoint rather than opening a TCP
+  connection, so a plain Postgres container cannot serve it. Use a free Neon
+  database.
+
+---
+
+## Environment variables
+
+Every variable is documented inline in the example files:
+
+- **[`web/.env.example`](web/.env.example)** for the Next.js app
+- **[`server/.env.example`](server/.env.example)** for the intake server and worker
+
+Copy them to `web/.env.local` and `server/.env`.
+
+**The two that cause most of the confusion:**
+
+| Variable | Local | Production |
+| --- | --- | --- |
+| `REDIS_HOST` | `localhost` | `redis` (the compose service name) |
+| `INTAKE_SERVER_URL` | blank, runs inline | the server URL, uses the queue |
+
+> `REDIS_HOST` is worth calling out because getting it wrong **fails silently**.
+> `/health` still returns ok and jobs simply never run.
+
+---
+
+## API documentation
+
+**[docs/api_docs.md](docs/api_docs.md)** covers every endpoint: auth scheme,
+request shape, response shape, and status codes.
+
+| Route | Caller | Auth |
+| --- | --- | --- |
+| `/api/cron/fetch-emails` | Scheduler | `Bearer CRON_SECRET` |
+| `/api/cron/poll-signal-replies` | Scheduler | `Bearer CRON_SECRET` |
+| `/api/agent/run-job` | Queue worker | `x-secret` |
+| `/api/internal/sync-jobs` | Queue worker | `x-secret` |
+| `/api/webhooks/razorpay` | Razorpay | HMAC signature |
+| `/api/signal/qr`, `/api/agent/run`, `/api/billing/subscribe` | Browser | Session |
+| `POST /sync` | Vercel | `x-secret` |
+| `GET /health` | Anyone | none |
+| `/admin/queues` | You | Basic auth |
+
+Four callers, four auth schemes, no shared middleware. Each route checks its own.
+
+---
+
+## Testing
+
+**[docs/testing_docs.md](docs/testing_docs.md)**
+
+```bash
+cd web && pnpm test        # 215 tests, 22 files
+cd server && pnpm test     # 51 tests, 8 files
+```
+
+| | Count |
+| --- | --- |
+| Total tests | **266** |
+| Test files | 30 |
+| Runtime | Under 3 seconds |
+| Type | All unit tests, externals mocked at the module boundary |
+
+CI runs typecheck, tests, and lint on every push and pull request.
+
+> One CI job exists purely to fail the build if a `*.test.ts` file is written
+> outside `tests/`. Such a file matches no vitest include glob, would never run,
+> and CI would still pass green.
+
+---
+
+## Production deployment
+
+**[docs/prod_deploy_aws_lightsail.md](docs/prod_deploy_aws_lightsail.md)**
+
+A full walkthrough for deploying `server/` to AWS Lightsail, including the
+GitHub Actions pipeline, with a verification step and expected output after
+every stage.
+
+**How a deploy runs** (`.github/workflows/deploy-server.yml`):
+
+1. Push to `main` touching `server/`
+2. GitHub runs typecheck and tests
+3. GitHub builds the Docker image and pushes it to GHCR
+4. GitHub connects over SSH, pulls the image, restarts the containers
+5. The workflow polls `/health` and pings Redis before it reports success
+
+> The box never builds anything. 1 GB of RAM is not enough for `pnpm install`
+> during a Docker build.
+
+---
+
+## Design decisions
+
+The parts that took the most thought, grouped by what they protect.
+
+### Scalability
+
+<details open>
+<summary><b>Two execution modes behind one variable</b></summary>
+
+<br/>
+
+| `INTAKE_SERVER_URL` | Behaviour |
+| --- | --- |
+| blank | `fetch-emails` runs every account inline in the request |
+| set | The same route fans out to the queue and returns immediately |
+
+Local development needs no Redis and no worker. Production gets a worker pool.
+One code path.
+
+</details>
+
+<details>
+<summary><b>The worker calls back instead of running the agent</b></summary>
+
+<br/>
+
+`server/worker.ts` is 83 lines and its job handler is a single `fetch` to
+`/api/agent/run-job`.
+
+- Agent logic stays in one package, so the Gmail and Groq code cannot drift into
+  two copies.
+- The always on box needs almost no CPU. It idles under 1%.
+- That is what let it move from a **$77/month EC2 instance to a $7/month
+  Lightsail bundle.**
+
+</details>
+
+### Reliability
+
+<details>
+<summary><b>Retries are off by default</b></summary>
+
+<br/>
+
+`web/lib/retry.ts` bounds how long we wait, but a timeout cannot cancel a call
+that already reached the server.
+
+So `executeGmailTool` passes `retries: options.retries ?? 0`. Every Gmail action
+gets one attempt unless a caller explicitly asks for more, and a timed out but
+applied send is never repeated by accident.
+
+</details>
+
+<details>
+<summary><b>Failed and dead are different states</b></summary>
+
+<br/>
+
+BullMQ fires its `failed` event on every attempt. The worker checks
+`attemptsMade` against the configured limit and only reports `dead` once the job
+is genuinely out of retries, so a transient error does not look permanent in the
+UI.
+
+</details>
+
+<details>
+<summary><b>Job history is written to Postgres</b></summary>
+
+<br/>
+
+Redis keeps only the last 100 completed and 500 failed jobs. Queue state is the
+source of truth while a job runs, but history goes to `sync_jobs` via
+`/api/internal/sync-jobs` so it does not vanish on eviction.
+
+</details>
+
+<details>
+<summary><b>Emails are claimed atomically, not checked then written</b></summary>
+
+<br/>
+
+`claimEmailForProcessing` is one `INSERT ... ON CONFLICT DO UPDATE` with
+`setWhere` limited to claimable statuses, returning the row.
+
+- If two runs race on the same message, exactly one gets a row back and proceeds.
+- Emails already `notified`, `drafted`, or `archived` are never reclaimed.
+- A read then write would leave a window where both runs think they won.
+
+</details>
+
+<details>
+<summary><b>Idempotency where replays are expected</b></summary>
+
+<br/>
+
+- `processed_webhook_events` keyed on `x-razorpay-event-id` stops a retried
+  payment webhook applying twice. Payment providers retry by design.
+- `markEmailHandledIfAbsent` is the matching backstop for a tool that failed
+  after acting but before recording it.
+
+</details>
+
+<details>
+<summary><b>Signal polling is narrowed on purpose</b></summary>
+
+<br/>
+
+Only users with a pending draft are polled, and duplicate Signal numbers are
+removed first. Polling everyone caused lock contention inside signal-cli.
+
+</details>
+
+### Security
+
+<details>
+<summary><b>Timing safe secret comparison</b></summary>
+
+<br/>
+
+All four auth paths use `secureEquals` instead of `===`. A missing or
+unconfigured secret is treated as unauthorized rather than throwing, so a half
+configured deploy returns 401 instead of 500.
+
+</details>
+
+<details>
+<summary><b>The queue dashboard cannot leak</b></summary>
+
+<br/>
+
+`/admin/queues` is only mounted when **both** `QUEUE_DASHBOARD_USER` and
+`QUEUE_DASHBOARD_PASSWORD` are set. If either is missing the route does not
+exist, so it cannot be exposed unauthenticated by accident.
+
+</details>
+
+### Performance and usability
+
+<details>
+<summary><b>Neon's HTTP driver, not a pooled TCP client</b></summary>
+
+<br/>
+
+Each query is one HTTP request. There are no long lived sockets to go stale
+between serverless invocations and no cold connect timeout when the database
+wakes from idle.
+
+</details>
+
+<details>
+<summary><b>Ref codes avoid ambiguous characters</b></summary>
+
+<br/>
+
+The alphabet is `ABCDEFGHJKMNPQRSTUVWXYZ23456789`. No `I`, `L`, `O`, `0`, or
+`1`, because people retype these codes off a phone screen.
+
+</details>
+
+---
+
+## Limitations
+
+Stated plainly.
+
+| Limitation | Detail |
+| --- | --- |
+| **Not load tested** | No benchmarks exist. The worker is configured for concurrency 10, but that number has not been validated under real load. |
+| **No integration or e2e tests** | Nothing runs against a real Postgres, Redis, or signal-cli, and there are no component tests for the UI. |
+| **Plain HTTP to the box** | No domain, so no TLS. Secrets and email content cross the network unencrypted. Needs a domain and Certbot before real users. |
+| **`/health` does not check Redis** | It returns ok with the queue completely down. Real verification means reading the nginx access log and the Redis job counts. |
+| **Token limits not enforced** | `FREE_MONTHLY_TOKEN_LIMIT` exists in `web/config/plans.ts` and is used by the UI, but nothing blocks a run that exceeds it. |
+| **Single points of failure** | One box runs Redis, the worker, and signal-cli. Redis is not replicated. The `signal-cli-config` volume is the one piece of state not in git or Postgres. |
+| **Ref code required** | Signal replies must start with a ref code. Free form commands are not implemented. |
+| **Gmail only** | No Outlook or IMAP. |
+| **Manual migrations** | No auto migrate on deploy, in any environment. |
+
+---
+
+## Future improvements
+
+- **TLS** with a domain and Certbot, which also removes the plain HTTP
+  limitation above.
+- **A real health check** that pings Redis and returns 503 when it cannot, so a
+  broken queue fails the deploy instead of passing it.
+- **Enforce `FREE_MONTHLY_TOKEN_LIMIT`** at run time.
+- **Integration tests** against real Redis and Postgres containers.
+- **Free form Signal commands** that apply across all connected Gmail accounts.
+- **Horizontal worker scaling** with managed Redis, which would remove the
+  single box failure mode.
+- **Additional mail providers.**
 
 ---
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE)
-
----
+See [LICENSE](LICENSE).

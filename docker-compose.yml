@@ -1,0 +1,31 @@
+name: syncpilot-local
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: syncpilot-redis-local
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: syncpilot-signal-local
+    restart: unless-stopped
+    environment:
+      MODE: native
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./server/signal-cli-config/signal-cli-config:/home/.local/share/signal-cli
+
+volumes:
+  redis-data:
