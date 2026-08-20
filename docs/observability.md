@@ -128,13 +128,13 @@ Each process logs `telemetry started` on boot.
 
 ## 5. Production: the Lightsail box
 
-Both containers read `/opt/syncpilot/.env` through Compose `env_file`, so the
+Both containers read `~/syncpilot/server/.env` through Compose `env_file`, so the
 service name has to be overridden for the worker.
 
-Add the shared values to `/opt/syncpilot/.env`:
+Add the shared values to `~/syncpilot/server/.env`:
 
 ```bash
-nano /opt/syncpilot/.env
+nano ~/syncpilot/server/.env
 ```
 
 ```env
@@ -157,7 +157,7 @@ logs are merged.
 Restart:
 
 ```bash
-cd /opt/syncpilot
+cd ~/syncpilot/server
 docker compose up -d
 ```
 

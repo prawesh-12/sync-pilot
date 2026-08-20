@@ -59,7 +59,13 @@ async function handleSync(req: Request, res: Response) {
   }
 
   try {
-    const enqueued = await enqueueSyncJobs(parseJobs(req.body));
+    const jobs = parseJobs(req.body);
+    const enqueued = await enqueueSyncJobs(jobs);
+
+    if (jobs.length !== enqueued) {
+      log.warn({ received: jobs.length, enqueued }, "some sync jobs were dropped");
+    }
+
     res.json({ ok: true, enqueued });
   } catch (error) {
     log.error({ err: String(error) }, "failed to enqueue sync jobs");

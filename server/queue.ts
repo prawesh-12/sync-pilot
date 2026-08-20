@@ -1,6 +1,7 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { serverConfig } from "./config";
 import { reportJobStatus } from "./report-status";
+import { scopedLogger } from "./logger";
 
 export const SYNC_QUEUE_NAME = "email-sync";
 const SYNC_JOB_NAME = "sync";
@@ -23,6 +24,8 @@ export const redisConnection: ConnectionOptions = {
   port: serverConfig.redisPort,
 };
 
+const log = scopedLogger("QUEUE");
+
 let queue: Queue<SyncJob> | null = null;
 
 export function getEmailQueue(): Queue<SyncJob> {
@@ -36,6 +39,10 @@ export function getEmailQueue(): Queue<SyncJob> {
         removeOnFail: FAILED_JOBS_KEPT,
       },
     });
+
+    queue.on("error", (error) => {
+      log.error({ err: error, host: serverConfig.redisHost }, "redis error");
+    });
   }
 
   return queue;
@@ -48,9 +55,13 @@ export async function enqueueSyncJobs(jobs: SyncJob[]): Promise<number> {
     return 0;
   }
 
-  const added = await getEmailQueue().addBulk(
+  const emailQueue = getEmailQueue();
+  const added = await emailQueue.addBulk(
     jobs.map((job) => ({ name: SYNC_JOB_NAME, data: job })),
   );
+  const waiting = await emailQueue.getWaitingCount();
+
+  log.info({ enqueued: added.length, waiting }, "jobs reached redis");
 
   // Record each job as enqueued so its lifecycle is tracked from the start.
   await Promise.all(
