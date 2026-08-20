@@ -42,7 +42,7 @@ sent until you answer.
 | 7 | [Getting started](#getting-started) | Clone, install, run in about 6 commands |
 | 8 | [Environment variables](#environment-variables) | Config, and the two that trip people up |
 | 9 | [API documentation](#api-documentation) | All routes, callers, and auth schemes |
-| 10 | [Testing](#testing) | 266 tests and what CI enforces |
+| 10 | [Testing](#testing) | 272 tests and what CI enforces |
 | 11 | [Production deployment](#production-deployment) | AWS Lightsail and the CI/CD pipeline |
 | 12 | [Design decisions](#design-decisions) | Scalability, reliability, and security choices |
 | 13 | [Limitations](#limitations) | What it does not do |
@@ -101,12 +101,12 @@ dashboard is one more thing to remember to open.
 
 <table>
 <tr>
-<td width="50%"><img src="web/public/previews/syncpilot_landing_page.png" alt="Landing page"><br/><sub><b>Landing page</b></sub></td>
-<td width="50%"><img src="web/public/previews/Dashboard_page.png" alt="Dashboard"><br/><sub><b>Dashboard with recent runs</b></sub></td>
+<td width="50%"><img src="previews/syncpilot_landing_page.png" alt="Landing page"><br/><sub><b>Landing page</b></sub></td>
+<td width="50%"><img src="previews/Dashboard_page.png" alt="Dashboard"><br/><sub><b>Dashboard with recent runs</b></sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="web/public/previews/connection_setting_pop_up.png" alt="Connection settings"><br/><sub><b>Connecting Gmail and Signal</b></sub></td>
-<td width="50%"><img src="web/public/previews/mobile_signal_app_preview.jpeg" alt="Signal preview"><br/><sub><b>Brief and draft on Signal</b></sub></td>
+<td width="50%"><img src="previews/connection_setting_pop_up.png" alt="Connection settings"><br/><sub><b>Connecting Gmail and Signal</b></sub></td>
+<td width="50%"><img src="previews/mobile_signal_app_preview.jpeg" alt="Signal preview"><br/><sub><b>Brief and draft on Signal</b></sub></td>
 </tr>
 </table>
 
@@ -119,64 +119,48 @@ Two deployed pieces plus managed services:
 | Piece | Runs on | Responsibility |
 | --- | --- | --- |
 | **`web/`** | Vercel | UI, auth, and all agent logic (Gmail via Composio, triage via Groq, Signal send and receive) |
-| **`server/`** | AWS Lightsail, $7/month | Express intake API, BullMQ worker, Redis, self hosted signal-cli |
+| **`server/`** | AWS Lightsail (VPS)| Express intake API, BullMQ worker, Redis, self hosted signal-cli |
 
 ### How the services talk
 
 ```mermaid
-flowchart LR
-    phone["Signal app<br/>(your phone)"]
-    sched["cron-job.org<br/>(external scheduler)"]
+flowchart TB
+    sched["cron-job.org<br/>scheduler"]
 
     subgraph vercel["Vercel (web/)"]
         direction TB
-        ui["Dashboard<br/>(Auth.js + Google)"]
-        fetch["/api/cron/fetch-emails"]
-        poll["/api/cron/poll-signal-replies"]
-        runjob["/api/agent/run-job"]
-        status["/api/internal/sync-jobs"]
+        cron["/api/cron/fetch-emails<br>/api/cron/poll-signal-replies"]
+        agent["/api/agent/run-job<br>/api/internal/sync-jobs"]
     end
 
     subgraph box["Lightsail box (server/)"]
         direction TB
-        nginx["nginx :80<br/>(only public door)"]
-        intake["Express intake :3001"]
-        redis[("Redis :6379<br/>internal only")]
-        worker["BullMQ worker<br/>concurrency 10"]
-        signal["signal-cli-rest-api :8080<br/>MODE=native"]
+        nginx["nginx :80<br>only public door"]
+        queue["Express intake :3001<br>BullMQ worker"]
+        redis[("Redis :6379<br>internal only")]
+        signal["signal-cli :8080<br>MODE=native"]
     end
 
     subgraph managed["Managed services"]
-        direction TB
+        direction LR
         neon[("Neon Postgres")]
         composio["Composio to Gmail"]
-        groq["Groq<br/>(triage model)"]
-        razorpay["Razorpay"]
+        groq["Groq"]
     end
 
-    sched -->|"Bearer CRON_SECRET"| fetch
-    sched -->|"Bearer CRON_SECRET"| poll
+    phone["Signal app<br>your phone"]
 
-    fetch -->|"POST /sync + x-secret"| nginx
-    nginx --> intake
-    intake -->|"addBulk"| redis
-    redis --> worker
-    worker -->|"POST + x-secret"| runjob
-    worker -->|"job lifecycle"| status
-
-    runjob -->|"read / label / archive"| composio
-    runjob -->|"one decision per email"| groq
-    runjob -->|"send + X-Signal-Auth"| nginx
-    poll -->|"GET /v1/receive"| nginx
+    sched -->|"Bearer CRON_SECRET"| cron
+    cron -->|"POST /sync + x-secret"| nginx
+    nginx --> queue
+    queue <--> redis
+    queue -->|"POST + x-secret"| agent
+    agent -->|"send + X-Signal-Auth"| nginx
+    cron -->|"GET /v1/receive"| nginx
     nginx --> signal
-    signal <-->|"end-to-end encrypted"| phone
-
-    ui --> neon
-    ui --> razorpay
-    fetch --> neon
-    poll --> neon
-    runjob --> neon
-    status --> neon
+    signal <-->|"encrypted"| phone
+    agent --> managed
+    cron --> neon
 
     style vercel fill:none,stroke:#888,stroke-width:1px
     style box fill:none,stroke:#888,stroke-width:1px
@@ -246,7 +230,7 @@ sequenceDiagram
 | Containers | <img src="https://cdn.simpleicons.org/docker/2496ED" width="16" height="16" align="top" /> Docker Compose | Three containers in production, two for local development |
 | Billing | <img src="https://cdn.simpleicons.org/razorpay/3395FF" width="16" height="16" align="top" /> Razorpay | Subscriptions with signed, idempotent webhooks |
 | Logging | <img src="https://cdn.simpleicons.org/pino/687634/A3C14A" width="16" height="16" align="top" /> pino &nbsp; <img src="https://cdn.simpleicons.org/betterstack/000000/ffffff" width="16" height="16" align="top" /> Better Stack | Structured JSON, scoped loggers |
-| Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 266 tests across 30 files |
+| Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 272 tests across 31 files |
 | CI/CD | <img src="https://cdn.simpleicons.org/githubactions/2088FF" width="16" height="16" align="top" /> GitHub Actions + GHCR | Build the image in CI, the server only pulls |
 | Hosting | <img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="16" height="16" align="top" /> Vercel &nbsp; + <img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/amazonwebservices/amazonwebservices-original.svg" width="16" height="16" align="top" /> AWS Lightsail (VPS) | Serverless for the app, one $7/month box for the queue and Signal |
 
@@ -366,14 +350,14 @@ Four callers, four auth schemes, no shared middleware. Each route checks its own
 **[docs/testing_docs.md](docs/testing_docs.md)**
 
 ```bash
-cd web && pnpm test        # 215 tests, 22 files
+cd web && pnpm test        # 221 tests, 23 files
 cd server && pnpm test     # 51 tests, 8 files
 ```
 
 | | Count |
 | --- | --- |
-| Total tests | **266** |
-| Test files | 30 |
+| Total tests | **272** |
+| Test files | 31 |
 | Runtime | Under 3 seconds |
 | Type | All unit tests, externals mocked at the module boundary |
 

@@ -1,10 +1,10 @@
 # Testing
 
-266 tests across 30 files, all run with [Vitest](https://vitest.dev) 4.
+272 tests across 31 files, all run with [Vitest](https://vitest.dev) 4.
 
 ```
-Test Files  22 passed (22)      web
-     Tests  215 passed (215)
+Test Files  23 passed (23)      web
+     Tests  221 passed (221)
 
 Test Files   8 passed (8)       server
      Tests   51 passed (51)
@@ -16,7 +16,7 @@ database.
 ## Running them
 
 ```bash
-cd web && pnpm test          # 215 tests
+cd web && pnpm test          # 221 tests
 cd server && pnpm test       # 51 tests
 
 pnpm test:watch              # either package, watch mode
