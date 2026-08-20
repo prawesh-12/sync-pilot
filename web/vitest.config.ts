@@ -1,11 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Tests live in the repo-root tests/ tree, one level above this package, so
-// Vite needs explicit permission to read outside its own root.
+// Tests live outside this package root.
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 
-// Mirror the tsconfig "@/*" -> "./*" path alias so tests can import app modules.
+// Must mirror the path alias used by app imports.
 export default defineConfig({
   resolve: {
     alias: {
@@ -19,7 +18,7 @@ export default defineConfig({
     environment: "node",
     include: ["../tests/web_test/**/*.test.ts"],
     exclude: ["node_modules", ".next"],
-    // Silence app pino logs during tests so the output shows only test results.
+    // Keeps test output readable.
     env: { LOG_LEVEL: "silent" },
   },
 });

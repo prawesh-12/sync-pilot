@@ -278,9 +278,12 @@ WEB_APP_URL=https://your-app.vercel.app
 QUEUE_DASHBOARD_USER=admin
 QUEUE_DASHBOARD_PASSWORD=<pick a password>
 
-BETTERSTACK_SOURCE_TOKEN=
-BETTERSTACK_INGESTING_HOST=
 LOG_LEVEL=info
+
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-<zone>.grafana.net/otlp
+OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic%20<base64-instance-id-and-token>
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_SERVICE_NAME=syncpilot-server
 ```
 
 Save with `Ctrl+O`, `Enter`, `Ctrl+X`.
@@ -452,6 +455,10 @@ No containers are running yet. That is expected. GitHub starts them in Part C.
 
 **Do not skip this part.** It is the step most people miss, and the symptom is a
 500 error from your cron with nothing obviously wrong on the server.
+
+> Telemetry is optional and skipped here. To send traces, metrics, and logs
+> to Grafana Cloud, see **[observability.md](observability.md)** after the
+> deploy works.
 
 ## Step 12. Set the Vercel environment variables
 

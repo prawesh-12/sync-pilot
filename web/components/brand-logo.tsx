@@ -13,7 +13,7 @@ type BrandLogoProps = {
 
 const logoSizes = {
   sm: { className: "size-6", width: 24, height: 24 },
-  md: { className: "size-7", width: 28, height: 28 },
+  md: { className: "size-6 sm:size-7", width: 28, height: 28 },
 } as const;
 
 export function BrandLogo({
@@ -38,7 +38,7 @@ export function BrandLogo({
         <span
           className={cn(
             "font-display font-semibold tracking-tight whitespace-nowrap text-sp-text",
-            size === "md" ? "text-lg" : "text-base",
+            size === "md" ? "text-base sm:text-lg" : "text-base",
           )}
         >
           SyncPilot
@@ -48,7 +48,7 @@ export function BrandLogo({
   );
 
   const wrapperClassName = cn(
-    "inline-flex shrink-0 items-center gap-2.5",
+    "inline-flex shrink-0 items-center gap-2 sm:gap-2.5",
     className,
   );
 

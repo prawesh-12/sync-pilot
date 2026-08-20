@@ -78,7 +78,7 @@ replace it.
 module loads, because `server/config.ts` throws at import time when it is
 missing.
 
-Both suites run with `LOG_LEVEL: silent` so pino output does not bury the test
+Both suites run with `LOG_LEVEL: silent` so app logs do not bury the test
 results.
 
 ## How things are tested

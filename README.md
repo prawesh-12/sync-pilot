@@ -56,6 +56,7 @@ sent until you answer.
 | **[docs/api_docs.md](docs/api_docs.md)** | Every endpoint: auth scheme, request body, response body, status codes |
 | **[docs/testing_docs.md](docs/testing_docs.md)** | Test layout, the vitest config that makes it work, and the three CI jobs |
 | **[docs/prod_deploy_aws_lightsail.md](docs/prod_deploy_aws_lightsail.md)** | Full production deployment, from creating the instance to proving it works |
+| **[docs/observability.md](docs/observability.md)** | Wiring traces, metrics, and logs to Grafana Cloud over OTLP |
 
 ---
 
@@ -229,7 +230,7 @@ sequenceDiagram
 | Proxy | <img src="https://cdn.simpleicons.org/nginx/009639" width="16" height="16" align="top" /> nginx | The only public door into the box, enforces the Signal auth header |
 | Containers | <img src="https://cdn.simpleicons.org/docker/2496ED" width="16" height="16" align="top" /> Docker Compose | Three containers in production, two for local development |
 | Billing | <img src="https://cdn.simpleicons.org/razorpay/3395FF" width="16" height="16" align="top" /> Razorpay | Subscriptions with signed, idempotent webhooks |
-| Logging | <img src="https://cdn.simpleicons.org/pino/687634/A3C14A" width="16" height="16" align="top" /> pino &nbsp; <img src="https://cdn.simpleicons.org/betterstack/000000/ffffff" width="16" height="16" align="top" /> Better Stack | Structured JSON, scoped loggers |
+| Observability | <img src="https://cdn.simpleicons.org/opentelemetry/000000/ffffff" width="16" height="16" align="top" /> OpenTelemetry &nbsp; <img src="https://cdn.simpleicons.org/grafana/F46800" width="16" height="16" align="top" /> Grafana Cloud | Structured JSON logs, traces and metrics over OTLP |
 | Tests | <img src="https://cdn.simpleicons.org/vitest/FCC72B" width="16" height="16" align="top" /> Vitest | 272 tests across 31 files |
 | CI/CD | <img src="https://cdn.simpleicons.org/githubactions/2088FF" width="16" height="16" align="top" /> GitHub Actions + GHCR | Build the image in CI, the server only pulls |
 | Hosting | <img src="https://cdn.simpleicons.org/vercel/000000/ffffff" width="16" height="16" align="top" /> Vercel &nbsp; + <img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/amazonwebservices/amazonwebservices-original.svg" width="16" height="16" align="top" /> AWS Lightsail (VPS) | Serverless for the app, one $7/month box for the queue and Signal |
@@ -266,7 +267,9 @@ docs/
   api_docs.md                     Every endpoint
   testing_docs.md                 Test suite and CI
   prod_deploy_aws_lightsail.md    Production deployment
+  observability.md                Telemetry to Grafana Cloud
 
+run.sh                  Runs web, intake server, and worker together
 docker-compose.yml      Redis and signal-cli for local development
 ```
 
@@ -288,14 +291,19 @@ pnpm install --dir server
 docker compose up -d          # Redis and signal-cli
 
 cp web/.env.example web/.env.local
-# fill it in, then:
-cd web && pnpm db:migrate && pnpm dev
+cp server/.env.example server/.env.local
+# fill both in, then:
+cd web && pnpm db:migrate && cd ..
+
+./run.sh                      # web + intake server + worker
 ```
 
-**Two things to know:**
+**Three things to know:**
 
 - `docker-compose.yml` deliberately runs only the supporting services. The web
-  app and intake server run with pnpm so you keep hot reload.
+  app, intake server, and worker run on the host so you keep hot reload.
+- `./run.sh` reads `.env.local`. `./run.sh production` reads `.env.production`
+  and builds the web app first.
 - **Postgres is not in the compose file.** `web/db/client.ts` uses the Neon HTTP
   driver, which speaks HTTP to a Neon endpoint rather than opening a TCP
   connection, so a plain Postgres container cannot serve it. Use a free Neon
@@ -310,7 +318,7 @@ Every variable is documented inline in the example files:
 - **[`web/.env.example`](web/.env.example)** for the Next.js app
 - **[`server/.env.example`](server/.env.example)** for the intake server and worker
 
-Copy them to `web/.env.local` and `server/.env`.
+Copy them to `web/.env.local` and `server/.env.local`.
 
 **The two that cause most of the confusion:**
 

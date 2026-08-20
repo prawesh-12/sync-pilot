@@ -24,7 +24,7 @@ export function StartSection() {
           {ONBOARDING_STEPS.map((step) => (
             <li
               key={step.number}
-              className="sp-surface-1 flex flex-wrap items-center gap-4 px-6 py-4"
+              className="sp-surface-1 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 sm:px-6"
             >
               <Label className="shrink-0 text-sp-cobalt">{step.number}</Label>
               <span className="shrink-0">
@@ -34,8 +34,8 @@ export function StartSection() {
                   <SignalMark size={MARK_SIZE} />
                 )}
               </span>
-              <span className="sp-body w-40 shrink-0 text-sp-text">{step.name}</span>
-              <span className="sp-body min-w-0 flex-1 text-sp-muted">
+              <span className="sp-body shrink-0 text-sp-text sm:w-40">{step.name}</span>
+              <span className="sp-body w-full min-w-0 text-sp-muted sm:w-auto sm:flex-1">
                 {step.detail}
               </span>
               <Label className="shrink-0 normal-case tracking-[0.04em]">

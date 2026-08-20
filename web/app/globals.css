@@ -8,8 +8,6 @@
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --font-sans: var(--font-sans);
-    /* Plex Mono is the product's one monospace, so shadcn's font-mono and the
-       sp-* label/code scale resolve to the same face. */
     --font-mono: var(--font-plex-mono);
     --font-heading: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -164,8 +162,6 @@
     animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Prefixed sp-* so the landing palette never collides with the shadcn theme. */
-
 @theme {
     --color-sp-base: #07070f;
     --color-sp-raised: #1a1e28;
@@ -174,30 +170,19 @@
     --color-sp-cobalt: #6c4de6;
     --color-sp-amber: #e3a94a;
     --color-sp-sage: #6fa97d;
-    /* Two more accents so a set of icons can carry five distinct hues. The
-       page ground is a violet-tinted near-black, so a violet-only icon set
-       sinks into it; sky and lilac widen the range without leaving the
-       family. Lilac is the violet already used for focus rings and links,
-       promoted to a token now that it is part of the palette proper. */
     --color-sp-sky: #5ec8e5;
     --color-sp-lilac: #a089e6;
 }
 
 @theme inline {
     --font-display: var(--font-bricolage);
-    /* Work Sans is bound to --font-sans at the root, for every route. */
     --font-body: var(--font-sans);
     --font-mono-tech: var(--font-plex-mono);
 }
 
-/* ---------------------------------------------------------------------------
-   Landing design system. One container, one spacing scale, one type scale,
-   three surface levels, one reveal. Every landing section consumes these;
-   nothing declares its own max width, offset, or one-off gap.
-   --------------------------------------------------------------------------- */
-
 :root {
     --sp-container: 1200px;
+    --sp-gutter-sm: 16px;
     --sp-gutter: 24px;
     --sp-gutter-lg: 40px;
 
@@ -215,14 +200,11 @@
     --sp-reveal-duration: 500ms;
 }
 
-/* Anchor links from the nav land below the sticky bar rather than under it. */
 @media (prefers-reduced-motion: no-preference) {
     html {
         scroll-behavior: smooth;
     }
 }
-
-/* Container ------------------------------------------------------------- */
 
 .sp-container {
     width: 100%;
@@ -231,13 +213,17 @@
     padding-inline: var(--sp-gutter);
 }
 
+@media (max-width: 639px) {
+    .sp-container {
+        padding-inline: var(--sp-gutter-sm);
+    }
+}
+
 @media (min-width: 768px) {
     .sp-container {
         padding-inline: var(--sp-gutter-lg);
     }
 }
-
-/* Type scale ------------------------------------------------------------ */
 
 .sp-display {
     font-family: var(--font-bricolage), var(--font-sans), sans-serif;
@@ -288,12 +274,9 @@
     line-height: 1.5;
 }
 
-/* Line length cap for anything that runs as prose. */
 .sp-measure {
     max-width: 62ch;
 }
-
-/* Surfaces -------------------------------------------------------------- */
 
 .sp-surface-1 {
     background: var(--sp-surface-1-bg);
@@ -308,8 +291,6 @@
     box-shadow: var(--sp-surface-2-shadow);
 }
 
-/* The single "this is what is live right now" treatment. Only one element on
-   screen wears it at a time. */
 .sp-lit {
     background: var(--sp-surface-2-bg);
     border: 1px solid var(--sp-lit-border);
@@ -328,18 +309,6 @@
     border-color: var(--sp-surface-2-border);
 }
 
-/* Stroke draw-in -----------------------------------------------------------
-   Icons and connectors arrive by drawing themselves rather than by fading.
-   Every path carries pathLength="1", so one keyframe covers geometry of any
-   real length and a whole set can share a single timing.
-
-   The resting state is the finished drawing, as everywhere else on this page.
-   Every rule that hides, mutes or delays lives inside the no-preference query
-   below, so reduced motion is not a set of overrides to be kept in sync — the
-   sequencing simply never applies, and the art is drawn and lit from the
-   start. The same holds without JavaScript, since .sp-js gates all of it.
-   ------------------------------------------------------------------------- */
-
 @keyframes sp-draw {
     from {
         stroke-dashoffset: 1;
@@ -349,7 +318,6 @@
     }
 }
 
-/* A short dash chased along the whole length of a connector. */
 @keyframes sp-pulse-travel {
     from {
         stroke-dashoffset: 1;
@@ -367,13 +335,10 @@
     }
 }
 
-/* Line art at 1.5 stroke reads thin on a dark ground. A bloom in currentColor
-   gives it presence without thickening the stroke. */
 .sp-draw {
     filter: drop-shadow(0 0 7px color-mix(in srgb, currentColor 38%, transparent));
 }
 
-/* The pulse is pure decoration: it never shows unless it is travelling. */
 .sp-pulse {
     opacity: 0;
     stroke-dasharray: 0.18 0.82;
@@ -386,8 +351,6 @@
 
     .sp-js [data-draw="false"] .sp-draw > * {
         stroke-dashoffset: 1;
-        /* A round cap on a zero-length dash still paints a dot, which
-           speckles the diagram before it starts. */
         stroke-linecap: butt;
     }
 
@@ -400,7 +363,6 @@
             var(--sp-draw-delay, 0ms);
     }
 
-    /* Colour only: the drawing carries the motion. */
     .sp-step,
     .sp-outcome {
         transition: color 320ms var(--sp-ease), border-color 320ms
@@ -417,8 +379,6 @@
     }
 }
 
-/* Focus ----------------------------------------------------------------- */
-
 .sp-focus {
     outline: none;
 }
@@ -428,9 +388,7 @@
     outline-offset: 2px;
 }
 
-/* Scroll reveal --------------------------------------------------------- */
-
-/* Hidden state is gated on .sp-js so the page still reads with JS disabled. */
+/* Gated on .sp-js so the page still reads without JavaScript. */
 .sp-js .sp-reveal {
     opacity: 0;
     transform: translateY(16px);
@@ -448,13 +406,6 @@
     transform: none;
 }
 
-/* Tier 1 stage --------------------------------------------------------------
-   The resting state of every element here is its FINISHED state. Nothing is
-   hidden unless a moment is genuinely playing, which is what `data-playing`
-   on the stage reports. So a failed script, a stalled loop, or a browser with
-   no JavaScript all leave the section fully readable rather than blank.
-   -------------------------------------------------------------------------- */
-
 .sp-stage [data-step] {
     transition: opacity 260ms var(--sp-ease), transform 260ms var(--sp-ease);
 }
@@ -469,8 +420,6 @@
     transform: translateY(16px);
 }
 
-/* Journey cards are never absent, only unlit, so the whole journey is legible
-   from the first frame. */
 .sp-stage [data-card] {
     transition: opacity 260ms var(--sp-ease), transform 260ms var(--sp-ease),
         border-color 260ms var(--sp-ease);
@@ -481,7 +430,6 @@
     transform: translateY(6px);
 }
 
-/* The one lit element. Its glow rides a separate layer so only opacity moves. */
 .sp-glow {
     opacity: 1;
     transition: opacity 400ms var(--sp-ease);
@@ -491,8 +439,6 @@
     opacity: 0;
 }
 
-/* Options the agent looked at and put down. They rest dimmed, because that is
-   how the decision ends up. */
 .sp-stage [data-role="rejected"] {
     opacity: 0.4;
     transition: opacity 300ms var(--sp-ease);
@@ -502,23 +448,10 @@
     opacity: 1;
 }
 
-/* The rail's three layers -------------------------------------------------
-   segments (z1), packet (z2), node wells (z3). The wells are opaque and the
-   track is drawn in separate pieces, so no line ever runs behind a node.
-   ------------------------------------------------------------------------ */
-
-/* Each segment fills on its own, over the same 600ms the packet takes to
-   cross it. */
 .sp-segment-fill {
     transition: stroke-dashoffset 350ms cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-/* Traffic along a leg the message has already crossed. One dash period is 11.5
-   units, so shifting the offset by exactly that per iteration loops seamlessly;
-   negative offset runs the dots toward the next node rather than back.
-
-   It runs only while the stage is playing, so it stops with everything else
-   when the section is off screen or a reader is pointing at it. */
 @keyframes sp-segment-flow {
     from {
         stroke-dashoffset: 0;
@@ -541,8 +474,6 @@
     animation: sp-segment-flow 1100ms linear infinite;
 }
 
-/* Travel eases out of one node and into the next. The per-property durations
-   are set inline, because travel animates and repositioning does not. */
 .sp-packet {
     opacity: 0;
     transition-property: transform, opacity;
@@ -553,9 +484,6 @@
     opacity: 1;
 }
 
-/* The chip rides over the track, so its ground must be opaque like a node
-   well. Base colour first, the tint over it as a background-image — a flat
-   15% cobalt fill let the segment line read through the label. */
 .sp-packet-chip {
     background-color: var(--color-sp-base);
     background-image: linear-gradient(
@@ -564,7 +492,6 @@
     );
 }
 
-/* The well never changes opacity: only what sits inside it does. */
 .sp-node-content {
     opacity: 1;
     transition: opacity 400ms var(--sp-ease);
@@ -587,7 +514,6 @@
     border-color: rgba(255, 255, 255, 0.07);
 }
 
-/* One soft ring that expands and fades as the node lights. */
 @keyframes sp-node-ring {
     from {
         opacity: 0.65;
@@ -607,8 +533,6 @@
     animation: sp-node-ring 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Signal thread bubbles ------------------------------------------------- */
-
 @keyframes sp-bubble-in {
     from {
         opacity: 0;
@@ -624,7 +548,6 @@
     animation: sp-bubble-in 240ms var(--sp-ease) both;
 }
 
-/* The one "this is live" tell, on the activity panel's status dot. */
 @keyframes sp-breathe {
     0%,
     100% {
@@ -639,8 +562,6 @@
     animation: sp-breathe 2.4s ease-in-out infinite;
 }
 
-/* Activity log rows ----------------------------------------------------- */
-
 @keyframes sp-log-in {
     from {
         opacity: 0;
@@ -652,8 +573,7 @@
     }
 }
 
-/* No fill-mode: the row must fall back to class-driven opacity so the
-   oldest row can fade out via transition. */
+/* No fill-mode: the row falls back to class-driven opacity. */
 .sp-log-in {
     animation: sp-log-in 400ms var(--sp-ease);
 }
@@ -662,8 +582,6 @@
     opacity: 0.25;
     transition: opacity 400ms var(--sp-ease);
 }
-
-/* FAQ accordion --------------------------------------------------------- */
 
 @keyframes sp-accordion-down {
     from {
@@ -695,8 +613,6 @@
     animation: sp-accordion-up 240ms var(--sp-ease);
 }
 
-/* Reduced motion -------------------------------------------------------- */
-
 @media (prefers-reduced-motion: reduce) {
     .sp-reveal,
     .sp-stage [data-step],
@@ -721,13 +637,11 @@
         transition-delay: 0ms !important;
     }
 
-    /* Final states, shown straight away. */
     .sp-js .sp-reveal {
         opacity: 1;
         transform: none;
     }
 
-    /* No packet under reduced motion, and every node already lit. */
     .sp-packet,
     .sp-packet[data-on="true"] {
         opacity: 0;
@@ -758,11 +672,6 @@
     }
 }
 
-/* Route transitions ------------------------------------------------------
-   One treatment for every route change: the page fades in as a unit and a
-   violet bar runs across the top while it lands.
-   ---------------------------------------------------------------------- */
-
 @keyframes sp-route-enter {
     from {
         opacity: 0;
@@ -774,11 +683,7 @@
     }
 }
 
-/* "backwards" rather than "both" on purpose. A filling transform animation
-   keeps this element a containing block for fixed descendants even once it has
-   finished and the transform computes to none, which would leave the fixed nav
-   and the section indicator scrolling away with the page. Backwards still
-   applies the opening frame before the animation starts, so nothing flashes. */
+/* "backwards" not "both": a filling transform breaks fixed children. */
 .sp-route-enter {
     animation: sp-route-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
@@ -814,17 +719,6 @@
     }
 }
 
-
-/* Panel snapping ----------------------------------------------------------
-   One gesture, one panel. The page is a stack of panels, each one viewport
-   tall, and `scroll-snap-stop: always` is what stops a fast flick from
-   crossing three of them at once.
-
-   Native CSS scroll snap on <html> only. Nothing intercepts the wheel, so
-   keyboard scrolling, Page Down, Home, End, browser find and the back button
-   all keep working.
-   ------------------------------------------------------------------------ */
-
 .sp-panel {
     display: flex;
     flex-direction: column;
@@ -833,8 +727,6 @@
     padding-bottom: 96px;
 }
 
-/* The closing panel carries the footer, which belongs on the bottom edge
-   rather than centred with the call to action above it. */
 .sp-panel-end {
     justify-content: flex-end;
     padding-bottom: 0;
@@ -842,9 +734,6 @@
 
 html.sp-snap .sp-panel {
     min-height: 100vh;
-    /* Clears the sticky nav. Deliberately not scroll-margin-top: under
-       mandatory snapping that fights the snap position rather than moving
-       the content out from under the bar. */
     padding-top: 96px;
     padding-bottom: 32px;
     scroll-margin-top: 0;
@@ -854,9 +743,6 @@ html.sp-snap .sp-panel-end {
     padding-bottom: 0;
 }
 
-/* Measured at runtime. A panel taller than the viewport must not become a
-   hard stop, because mandatory snapping would leave its lower half
-   unreachable. */
 html.sp-snap .sp-panel[data-fits="true"] {
     scroll-snap-align: start;
     scroll-snap-stop: always;
@@ -866,31 +752,21 @@ html.sp-snap[data-snap-fit="all"] {
     scroll-snap-type: y mandatory;
 }
 
-/* One panel overflowed its viewport, so it carries no snap point. Mandatory
-   would then refuse to rest anywhere inside it; proximity still lets a reader
-   stop and read. */
 html.sp-snap[data-snap-fit="partial"] {
     scroll-snap-type: y proximity;
 }
 
-/* On a shorter laptop the panel's own padding gives first, before any panel
-   overflows and drops the page to proximity. 80px still clears the 71px nav. */
 @media (min-width: 1025px) and (max-height: 880px) {
     html.sp-snap .sp-panel {
         padding-top: 80px;
         padding-bottom: 8px;
     }
 
-    /* The footer is the most generously padded block on the page, so it is
-       the next thing to give on the closing panel. */
     html.sp-snap .sp-panel-end footer > .sp-container {
         padding-block: 40px;
     }
 }
 
-/* Snapping is for wheel-and-pointer reading on a large screen. Phone and
-   tablet viewports are too short for the content, and touch momentum fights
-   the snap. */
 @media (max-width: 1024px) {
     html.sp-snap[data-snap-fit] {
         scroll-snap-type: none;
@@ -921,10 +797,6 @@ html.sp-snap[data-snap-fit="partial"] {
         padding-bottom: 0;
     }
 }
-
-/* Section indicator ------------------------------------------------------
-   A page that moves a full screen at a time needs to say where you are.
-   ------------------------------------------------------------------------ */
 
 .sp-dot {
     display: block;

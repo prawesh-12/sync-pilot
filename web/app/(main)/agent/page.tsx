@@ -5,13 +5,21 @@ import { AgentDecisionsList } from "@/components/agent/agent-decisions-list";
 import { AgentDecisionsSkeleton } from "@/components/agent/agent-decisions-skeleton";
 import { SiteBackdrop } from "@/components/site-backdrop";
 
-export default async function AgentPage() {
-  const session = await auth();
+const FIRST_PAGE = 1;
+
+type AgentPageProps = {
+  searchParams: Promise<{ page?: string | string[] }>;
+};
+
+export default async function AgentPage({ searchParams }: AgentPageProps) {
+  const [session, params] = await Promise.all([auth(), searchParams]);
   const userId = session?.user?.id;
 
   if (!userId) {
     redirect("/sign-in");
   }
+
+  const page = readPage(params.page);
 
   return (
     <main className="relative flex w-full flex-1 flex-col overflow-x-hidden bg-sp-base text-sp-text">
@@ -25,10 +33,21 @@ export default async function AgentPage() {
           </p>
         </section>
 
-        <Suspense fallback={<AgentDecisionsSkeleton />}>
-          <AgentDecisionsList userId={userId} />
+        <Suspense key={page} fallback={<AgentDecisionsSkeleton />}>
+          <AgentDecisionsList userId={userId} page={page} />
         </Suspense>
       </div>
     </main>
   );
+}
+
+function readPage(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < FIRST_PAGE) {
+    return FIRST_PAGE;
+  }
+
+  return parsed;
 }

@@ -56,7 +56,7 @@ export default function RootLayout({
     >
       {/* Base surface set here rather than per page. */}
       <body
-        className={`${workSans.className} flex min-h-screen flex-col overflow-x-hidden bg-sp-base text-sp-text antialiased`}
+        className={`${workSans.className} flex min-h-screen flex-col overflow-x-clip bg-sp-base text-sp-text antialiased`}
       >
         {children}
       </body>

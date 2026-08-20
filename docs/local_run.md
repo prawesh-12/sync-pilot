@@ -191,14 +191,14 @@ Only needed if you want to exercise the same path production uses.
 Set these in `web/.env.local`:
 
 ```env
-SYNC_SECRET=<any value, must match server/.env>
+SYNC_SECRET=<any value, must match server/.env.local>
 INTAKE_SERVER_URL=http://localhost:3001
 ```
 
-Create `server/.env`:
+Create `server/.env.local`:
 
 ```bash
-cp server/.env.example server/.env
+cp server/.env.example server/.env.local
 ```
 
 ```env
@@ -216,7 +216,18 @@ and Redis publishes port 6379. In production the worker runs inside Docker
 Compose and the value must be `redis`, the service name. Getting this wrong
 fails silently: `/health` still returns ok and jobs simply never run.
 
-Run the two processes in separate terminals:
+Or start everything at once from the repo root:
+
+```bash
+./run.sh              # local mode
+./run.sh production   # build and serve like production
+```
+
+`run.sh` starts the web app, the intake server, and the worker together, and
+stops all three on Ctrl+C. It reads `.env.local` in local mode and
+`.env.production` in production mode.
+
+To run just the queue processes in separate terminals:
 
 ```bash
 cd server && pnpm dev      # intake API on :3001
@@ -251,6 +262,12 @@ docker compose up -d
 
 **Queue jobs stay in `wait`.** The worker is not running, or `REDIS_HOST` is
 wrong. Check with `docker exec syncpilot-redis-local redis-cli ping`.
+
+## Optional: send telemetry to Grafana Cloud
+
+Not needed for local work. If you want traces, metrics, and logs while
+developing, **[observability.md](observability.md)** covers the four `OTEL_*`
+variables and where to get their values.
 
 ## Stopping
 

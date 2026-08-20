@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 // Matches the landing nav: opaque at every scroll position, one hairline rule,
 // and the shared page container so the logo lines up across the whole product.
 const navLinkClass =
-  "sp-focus sp-body rounded-[6px] px-1 text-sp-muted transition-colors duration-150 hover:text-sp-text";
+  "sp-focus shrink-0 rounded-[6px] px-1 text-sm leading-normal whitespace-nowrap text-sp-muted transition-colors duration-150 hover:text-sp-text sm:text-base";
 
 type NavbarProps = {
     className?: string;
@@ -32,12 +32,12 @@ export function Navbar({ className }: NavbarProps) {
                 className,
             )}
         >
-            <div className="sp-container flex items-center justify-between gap-6 py-4">
+            <div className="sp-container flex items-center justify-between gap-3 py-2.5 sm:gap-6 sm:py-4">
                 <BrandLogo />
 
-                <div className="flex items-center gap-6">
+                <div className="flex shrink-0 items-center gap-3 sm:gap-6">
                     {!isSignedIn ? (
-                        <PendingLink href="/sign-in" className={cn(ctaButtonClass, "px-4 py-2 text-sm")}>
+                        <PendingLink href="/sign-in" className={cn(ctaButtonClass, "shrink-0 px-3 py-1.5 text-xs whitespace-nowrap sm:px-4 sm:py-2 sm:text-sm")}>
                             Sign in
                             <ArrowRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />
                         </PendingLink>
@@ -63,7 +63,7 @@ export function Navbar({ className }: NavbarProps) {
                                 }}
                                 className={cn(
                                     ctaButtonTheme,
-                                    "inline-flex items-center gap-2 px-4 py-1.5 text-sm disabled:opacity-70",
+                                    "inline-flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs whitespace-nowrap sm:px-4 sm:text-sm disabled:opacity-70",
                                 )}
                             >
                                 {isSigningOut ? (

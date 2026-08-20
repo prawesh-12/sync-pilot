@@ -1,3 +1,6 @@
+// Must stay first or instrumentation never attaches.
+import "./telemetry";
+
 import { Worker, type Job } from "bullmq";
 import { runAgent } from "./agent";
 import { redisConnection, SYNC_QUEUE_NAME, type SyncJob } from "./queue";
@@ -5,12 +8,10 @@ import { reportJobStatus, type SyncJobStatus } from "./report-status";
 import { scopedLogger } from "./logger";
 import { isEntryPoint } from "./entry-point";
 
-// Process this many Gmail accounts at the same time, per the plan's target.
 const WORKER_CONCURRENCY = 10;
 
 const log = scopedLogger("WORKER");
 
-// Consumes one sync job and runs the agent for that integration.
 export function processJob(job: SyncJob): Promise<void> {
   return runAgent(job);
 }
@@ -44,8 +45,7 @@ export function startWorker() {
     );
 
     if (job) {
-      // BullMQ fires "failed" on every attempt; the job is truly dead once it
-      // has used its final attempt.
+      // "failed" fires per attempt, not just the last one.
       const isDead = job.attemptsMade >= (job.opts.attempts ?? 1);
       void report(job, isDead ? "dead" : "failed", error.message);
     }
@@ -67,7 +67,7 @@ function report(job: Job<SyncJob>, status: SyncJobStatus, error?: string) {
   });
 }
 
-// Let BullMQ finish in-flight jobs before the container stops.
+// Finish in-flight jobs before the container stops.
 function registerShutdown(worker: Worker<SyncJob>) {
   const shutdown = async () => {
     await worker.close();

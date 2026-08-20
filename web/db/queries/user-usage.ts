@@ -2,7 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { userUsage } from "@/db/schema";
 
-const EMPTY_MONTHLY_USAGE = {
+const EMPTY_USAGE = {
   totalTokensUsed: 0,
   emailCount: 0,
 };
@@ -42,5 +42,27 @@ export async function getMonthlyUsage(userId: string, month: string) {
     .where(and(eq(userUsage.userId, userId), eq(userUsage.month, month)))
     .limit(1);
 
-  return row ?? EMPTY_MONTHLY_USAGE;
+  return row ?? EMPTY_USAGE;
+}
+
+// Totals across every month, so the dashboard can show history when the
+// current month is still empty.
+export async function getLifetimeUsage(userId: string) {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      totalTokensUsed: sql<number>`coalesce(sum(${userUsage.totalTokensUsed}), 0)`,
+      emailCount: sql<number>`coalesce(sum(${userUsage.emailCount}), 0)`,
+    })
+    .from(userUsage)
+    .where(eq(userUsage.userId, userId));
+
+  if (!row) {
+    return EMPTY_USAGE;
+  }
+
+  return {
+    totalTokensUsed: Number(row.totalTokensUsed),
+    emailCount: Number(row.emailCount),
+  };
 }

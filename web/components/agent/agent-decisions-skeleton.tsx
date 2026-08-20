@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 
-const PLACEHOLDER_ROW_COUNT = 6;
+const PLACEHOLDER_ROW_COUNT = 10;
 
 export function AgentDecisionsSkeleton() {
   return (

@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 ## Prime Directive
 
@@ -36,9 +36,20 @@ If you cannot explain it in one sentence — rebuild it.
 
 ### Comments
 
-* Comment  **why** , never  **what** .
-* One line only. If you need more — the code is unclear, rewrite it.
-* No commented-out dead code. Delete it.
+* Default is NO comment. The code should explain itself.
+* Write one only if removing it would cause someone to break the code.
+  If it just describes what the line does — delete it.
+* Max 10 words. One line. Never a paragraph.
+* Never name specific libraries, files, or versions in a comment.
+  They go stale and become lies.
+* Never restate a function or variable name.
+* No banners or section dividers (`// ==== Setup ====`).
+* No JSDoc or docstrings except on exported public APIs.
+* No `TODO` / `FIXME` / `NOTE` without a ticket ID.
+* Never write phase, step, or stage numbers (`// Phase 1`).
+* No commented-out code. Delete it.
+* Do not add comments to code you did not change.
+* If a file has more than 3 comments, the code is unclear. Rewrite it.
 * In commenet never write phase or anything like phase 1 or phase 2, etc
 
 ---
