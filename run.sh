@@ -5,18 +5,25 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODE="${1:-local}"
 REDIS_PORT=6379
 SIGNAL_PORT=8080
+NEXT_BIN="node_modules/next/dist/bin/next"
+WORKER_SERVICE_NAME="syncpilot-worker"
+TSX_BIN="node_modules/.bin/tsx"
 
 usage() {
   cat <<'EOF'
 Usage: ./run.sh [local|production]
 
-  local        Default. next dev with hot reload. Reads .env.local.
-  production   next build, then next start. Reads .env.production.
+  local        Default. Hot reload everywhere. Reads .env.local.
+  production   Builds the web app first. Reads .env.production.
 
 Starts the web app, the intake server, and the worker together.
 Stop all three with Ctrl+C.
 
-Redis and signal-cli are not started here. Run them first:
+Install dependencies first:
+  cd server && pnpm install
+  cd web && pnpm install
+
+Redis and signal-cli are not started here:
   docker compose up -d
 EOF
 }
@@ -35,15 +42,23 @@ case "$MODE" in
     ;;
 esac
 
+fail() {
+  echo "$1" >&2
+  echo "  $2" >&2
+  exit 1
+}
+
 requireEnvFile() {
   local relative="$1"
-  local example="$2"
+  [[ -f "$ROOT/$relative" ]] ||
+    fail "Missing $relative" "Create it:  cp ${relative%.*}.example $relative"
+}
 
-  if [[ ! -f "$ROOT/$relative" ]]; then
-    echo "Missing $relative" >&2
-    echo "  Create it:  cp $example $relative" >&2
-    exit 1
-  fi
+requireDependencies() {
+  local package="$1"
+  local binary="$2"
+  [[ -e "$ROOT/$package/$binary" ]] ||
+    fail "Dependencies missing in $package/" "Run:  cd $package && pnpm install"
 }
 
 warnIfPortClosed() {
@@ -58,8 +73,9 @@ warnIfPortClosed() {
 
 start() {
   local label="$1"
-  shift
-  ("$@" 2>&1 | sed -u "s/^/[$label] /") &
+  local directory="$2"
+  shift 2
+  (cd "$ROOT/$directory" && exec "$@" 2>&1 | sed -u "s/^/[$label] /") &
 }
 
 stopAll() {
@@ -69,17 +85,23 @@ stopAll() {
   kill 0 2>/dev/null || true
 }
 
-requireEnvFile "web/.env.$MODE" "web/.env.example"
-requireEnvFile "server/.env.$MODE" "server/.env.example"
+requireEnvFile "web/.env.$MODE"
+requireEnvFile "server/.env.$MODE"
+requireDependencies "web" "$NEXT_BIN"
+requireDependencies "server" "$TSX_BIN"
 
 warnIfPortClosed "$REDIS_PORT" "redis"
 warnIfPortClosed "$SIGNAL_PORT" "signal-cli"
 
 export APP_ENV="$MODE"
 
+if [[ "$MODE" == "local" ]]; then
+  WORKER_SERVICE_NAME="syncpilot-worker-local"
+fi
+
 if [[ "$MODE" == "production" ]]; then
   echo "building web"
-  (cd "$ROOT/web" && node --env-file=.env.production ./node_modules/.bin/next build)
+  (cd "$ROOT/web" && node --env-file=.env.production "$NEXT_BIN" build)
 fi
 
 trap stopAll INT TERM EXIT
@@ -87,13 +109,14 @@ trap stopAll INT TERM EXIT
 echo "starting in $MODE mode"
 
 if [[ "$MODE" == "local" ]]; then
-  start web bash -c "cd '$ROOT/web' && pnpm dev"
+  start web web "./$NEXT_BIN" dev
+  start server server "./$TSX_BIN" watch server.ts
+  start worker server env OTEL_SERVICE_NAME="$WORKER_SERVICE_NAME" "./$TSX_BIN" watch worker.ts
 else
-  # next start reads .env.local first, so the file is passed explicitly.
-  start web bash -c "cd '$ROOT/web' && node --env-file=.env.production ./node_modules/.bin/next start"
+  # next start would otherwise let .env.local override .env.production.
+  start web web node --env-file=.env.production "$NEXT_BIN" start
+  start server server "./$TSX_BIN" server.ts
+  start worker server env OTEL_SERVICE_NAME="$WORKER_SERVICE_NAME" "./$TSX_BIN" worker.ts
 fi
-
-start server bash -c "cd '$ROOT/server' && pnpm start"
-start worker bash -c "cd '$ROOT/server' && pnpm worker"
 
 wait

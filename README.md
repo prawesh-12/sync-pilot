@@ -269,6 +269,7 @@ docs/
   prod_deploy_aws_lightsail.md    Production deployment
   observability.md                Telemetry to Grafana Cloud
 
+run.sh                  Runs web, intake server, and worker together
 docker-compose.yml      Redis and signal-cli for local development
 ```
 
@@ -290,14 +291,19 @@ pnpm install --dir server
 docker compose up -d          # Redis and signal-cli
 
 cp web/.env.example web/.env.local
-# fill it in, then:
-cd web && pnpm db:migrate && pnpm dev
+cp server/.env.example server/.env.local
+# fill both in, then:
+cd web && pnpm db:migrate && cd ..
+
+./run.sh                      # web + intake server + worker
 ```
 
-**Two things to know:**
+**Three things to know:**
 
 - `docker-compose.yml` deliberately runs only the supporting services. The web
-  app and intake server run with pnpm so you keep hot reload.
+  app, intake server, and worker run on the host so you keep hot reload.
+- `./run.sh` reads `.env.local`. `./run.sh production` reads `.env.production`
+  and builds the web app first.
 - **Postgres is not in the compose file.** `web/db/client.ts` uses the Neon HTTP
   driver, which speaks HTTP to a Neon endpoint rather than opening a TCP
   connection, so a plain Postgres container cannot serve it. Use a free Neon

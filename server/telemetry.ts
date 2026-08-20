@@ -74,7 +74,7 @@ function buildSdk(protocol: string): NodeSDK {
       }),
     ],
     logRecordProcessors: [
-      new logs.BatchLogRecordProcessor(createLogExporter(protocol)),
+      new logs.BatchLogRecordProcessor({ exporter: createLogExporter(protocol) }),
     ],
     instrumentations: [
       getNodeAutoInstrumentations({
