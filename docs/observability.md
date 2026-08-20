@@ -108,7 +108,7 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=syncpilot-web-local
 ```
 
-Add to `server/.env`:
+Add to `server/.env.local`:
 
 ```env
 OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-<zone>.grafana.net/otlp
@@ -214,7 +214,7 @@ line rather than assembling it by hand.
 Check what the process actually received:
 
 ```bash
-grep OTEL_EXPORTER_OTLP_HEADERS server/.env
+grep OTEL_EXPORTER_OTLP_HEADERS server/.env.local
 ```
 
 It must start with `Authorization=Basic` and the base64 must decode to

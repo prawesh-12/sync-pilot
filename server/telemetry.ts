@@ -1,4 +1,4 @@
-import { config as loadEnv } from "dotenv";
+import { loadServerEnv } from "./load-env";
 import { NodeSDK, logs, metrics } from "@opentelemetry/sdk-node";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter as ProtoTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
@@ -15,7 +15,7 @@ const DEFAULT_PROTOCOL = PROTOCOL_HTTP_PROTOBUF;
 const DEFAULT_SERVICE_NAME = "syncpilot-server";
 const METRIC_EXPORT_INTERVAL_MS = 60_000;
 
-loadEnv();
+loadServerEnv();
 
 const log = scopedLogger("TELEMETRY");
 

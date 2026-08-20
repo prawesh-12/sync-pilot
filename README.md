@@ -312,7 +312,7 @@ Every variable is documented inline in the example files:
 - **[`web/.env.example`](web/.env.example)** for the Next.js app
 - **[`server/.env.example`](server/.env.example)** for the intake server and worker
 
-Copy them to `web/.env.local` and `server/.env`.
+Copy them to `web/.env.local` and `server/.env.local`.
 
 **The two that cause most of the confusion:**
 

@@ -1,6 +1,6 @@
-import { config as loadEnv } from "dotenv";
+import { loadServerEnv } from "./load-env";
 
-loadEnv();
+loadServerEnv();
 
 const DEFAULT_REDIS_HOST = "localhost";
 const DEFAULT_REDIS_PORT = 6379;
