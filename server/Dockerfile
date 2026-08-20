@@ -1,6 +1,9 @@
 FROM node:22-slim
 
-RUN corepack enable
+# Installed globally rather than via corepack: corepack fetches pnpm lazily into
+# the calling user's cache, so a build as root leaves nothing for USER node and
+# every container start re-downloads it from npm.
+RUN npm install -g pnpm@11.7.0
 
 WORKDIR /app
 
