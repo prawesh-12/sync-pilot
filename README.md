@@ -266,9 +266,9 @@ BullMQ + Redis) on a host such as EC2:
 
 1. Set `SYNC_SECRET` (shared with the web app), `WEB_APP_URL`, and
    `REDIS_HOST`/`REDIS_PORT` in `server/.env` (see `server/.env.example`).
-2. Bring up Redis + the worker (`server/docker-compose.yml`). When running in
-   Docker Compose, `REDIS_HOST` must be the Redis **service name** (e.g.
-   `redis`), not `localhost`.
+2. Bring up Redis + the worker with `docker-compose.production.yml` (written
+   by hand — see `docs.md` Part 2). When running in Docker Compose,
+   `REDIS_HOST` must be the Redis **service name** (`redis`), not `localhost`.
 3. In the web app, set `INTAKE_SERVER_URL` to the server's base URL and
    `SYNC_SECRET` to the same value.
 
