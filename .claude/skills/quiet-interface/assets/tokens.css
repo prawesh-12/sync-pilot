@@ -1,0 +1,257 @@
+/*
+ * Quiet interface tokens. Copy into the project's styles and import it once, before the app's
+ * own CSS. Dark is the default; `data-theme="light"` on <html> switches to light (set it from the
+ * user's choice or from `matchMedia("(prefers-color-scheme: light)")`). With Tailwind v4, keep the @theme block so classes such as
+ * `bg-panel`, `text-fg-3` and `border-line` exist; without Tailwind, delete it and use the
+ * variables directly.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* surfaces, darkest to lightest */
+  --bg-chrome: #131211;
+  --bg-panel: #1a1918;
+  --bg-sunken: #100f0e;
+  --bg-raised: #222120;
+  --bg-hover: #252423;
+  --bg-active: #302f2d;
+  --bg-selected: #2a2928;
+
+  /* text */
+  --text-primary: #f2f1ef;
+  --text-secondary: #c8c6c3;
+  --text-tertiary: #9e9c99;
+  --text-quaternary: #858380;
+  --text-disabled: #656361;
+  --text-on-accent: #ffffff;
+
+  /* lines */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  /* the one accent */
+  --accent: #3b82f6;
+  --accent-hover: #5b98f8;
+  --accent-pressed: #2f6fe0;
+  --accent-text: #8ab4f8;
+  --accent-subtle: rgba(59, 130, 246, 0.16);
+  --focus-ring: rgba(138, 180, 248, 0.6);
+
+  /* status: on icons and dots, rarely as a 12% tint */
+  --status-neutral: #909090;
+  --status-info: #6aa6dc;
+  --status-attention: #e0b05e;
+  --status-review: #a993d8;
+  --status-success: #66b98a;
+  --status-danger: #e0706a;
+  --status-info-bg: rgba(106, 166, 220, 0.12);
+  --status-attention-bg: rgba(224, 176, 94, 0.12);
+  --status-review-bg: rgba(169, 147, 216, 0.12);
+  --status-success-bg: rgba(102, 185, 138, 0.12);
+  --status-danger-bg: rgba(224, 112, 106, 0.12);
+
+  /* elevation: only things that float */
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-float: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 8px 24px rgba(0, 0, 0, 0.32);
+
+  /* code: One Dark Pro */
+  --code-bg: #282c34;
+  --code-fg: #abb2bf;
+  --code-chrome: #21252b;
+  --code-cursor: #528bff;
+  --code-selection: rgba(103, 118, 150, 0.376);
+  --syn-keyword: #c678dd;
+  --syn-string: #98c379;
+  --syn-number: #d19a66;
+  --syn-function: #61afef;
+  --syn-type: #e5c07b;
+  --syn-property: #e06c75;
+  --syn-comment: #7f848e;
+  --syn-operator: #56b6c2;
+  --syn-punctuation: #abb2bf;
+
+  /* sizes */
+  --h-control-xs: 28px;
+  --h-control-sm: 32px;
+  --h-control-md: 36px;
+  --h-row: 34px;
+  --h-list-row: 40px;
+  --h-header: 44px;
+  --h-tabbar: 40px;
+  --w-sidebar: 264px;
+  --w-rail: 56px;
+  --w-reading: 720px;
+  --w-menu-min: 200px;
+  --w-dialog-sm: 440px;
+  --w-dialog-md: 560px;
+  --w-palette: 640px;
+  --w-toast: 360px;
+  --icon-xs: 16px;
+  --icon-sm: 18px;
+  --icon-md: 20px;
+  --gutter: 8px;
+
+  /* motion */
+  --dur-fast: 100ms;
+  --dur-base: 150ms;
+  --dur-slow: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-chrome: #f3f2f0;
+  --bg-panel: #fcfcfb;
+  --bg-sunken: #f0efed;
+  --bg-raised: #ffffff;
+  --bg-hover: #efeeec;
+  --bg-active: #e6e5e2;
+  --bg-selected: #ebeae7;
+  --text-primary: #1c1b1a;
+  --text-secondary: #45433f;
+  --text-tertiary: #6c6965;
+  --text-quaternary: #8a8783;
+  --text-disabled: #b0ada8;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.09);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --accent: #2f6fe0;
+  --accent-hover: #3b82f6;
+  --accent-pressed: #2559c4;
+  --accent-text: #2559c4;
+  --accent-subtle: rgba(47, 111, 224, 0.1);
+  --focus-ring: rgba(47, 111, 224, 0.5);
+  --status-neutral: #7a7875;
+  --status-info: #2f74c0;
+  --status-attention: #a86c00;
+  --status-review: #7558c0;
+  --status-success: #1f8a52;
+  --status-danger: #c43d35;
+  --status-info-bg: rgba(47, 116, 192, 0.1);
+  --status-attention-bg: rgba(168, 108, 0, 0.1);
+  --status-review-bg: rgba(117, 88, 192, 0.1);
+  --status-success-bg: rgba(31, 138, 82, 0.1);
+  --status-danger-bg: rgba(196, 61, 53, 0.1);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Every surface inside a code region takes the code theme, so a block can reuse panel classes. */
+.code-theme {
+  --bg-panel: var(--code-bg);
+  --bg-chrome: var(--code-chrome);
+  --bg-raised: var(--code-chrome);
+  --text-primary: #d7dae0;
+  --text-secondary: var(--code-fg);
+  --text-tertiary: #9da5b4;
+  --text-quaternary: #7f848e;
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+}
+
+/* Tailwind v4 mapping. Delete this block in a project without Tailwind. */
+@theme inline {
+  --color-chrome: var(--bg-chrome);
+  --color-panel: var(--bg-panel);
+  --color-sunken: var(--bg-sunken);
+  --color-raised: var(--bg-raised);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-selected: var(--bg-selected);
+  --color-fg: var(--text-primary);
+  --color-fg-2: var(--text-secondary);
+  --color-fg-3: var(--text-tertiary);
+  --color-fg-4: var(--text-quaternary);
+  --color-fg-disabled: var(--text-disabled);
+  --color-line: var(--border-subtle);
+  --color-line-2: var(--border-default);
+  --color-line-3: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-text: var(--accent-text);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-status-info: var(--status-info);
+  --color-status-attention: var(--status-attention);
+  --color-status-review: var(--status-review);
+  --color-status-success: var(--status-success);
+  --color-status-danger: var(--status-danger);
+
+  --text-micro: 12px;
+  --text-micro--line-height: 16px;
+  --text-small: 13px;
+  --text-small--line-height: 18px;
+  --text-ui: 14px;
+  --text-ui--line-height: 20px;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-prose: 15px;
+  --text-prose--line-height: 24px;
+  --text-heading: 19px;
+  --text-heading--line-height: 26px;
+  --text-display: 24px;
+  --text-display--line-height: 30px;
+  --text-code: 13px;
+  --text-code--line-height: 20px;
+
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+
+  --shadow-popover: var(--shadow-popover);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-float: var(--shadow-float);
+
+  --spacing-control-xs: var(--h-control-xs);
+  --spacing-control-sm: var(--h-control-sm);
+  --spacing-control-md: var(--h-control-md);
+  --spacing-row: var(--h-row);
+  --spacing-list-row: var(--h-list-row);
+  --spacing-header: var(--h-header);
+  --spacing-tabbar: var(--h-tabbar);
+  --spacing-sidebar: var(--w-sidebar);
+  --spacing-rail: var(--w-rail);
+  --spacing-reading: var(--w-reading);
+}
+
+/* Base rules the language depends on. */
+html {
+  font-size: 16px;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--bg-chrome);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* Icons keep a 1.5 px line at every size. */
+svg[data-icon] * {
+  vector-effect: non-scaling-stroke;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
