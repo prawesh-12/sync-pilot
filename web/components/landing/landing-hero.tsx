@@ -1,66 +1,54 @@
-"use client";
-
-import { Fragment, useCallback, useState } from "react";
 import { PendingLink } from "@/components/pending-link";
-import { HERO_PROOF, HERO_SUMMARY } from "@/components/landing/landing-content";
-import { HeroPipeline } from "@/components/landing/hero-pipeline";
-import { HeroTerminal } from "@/components/landing/hero-terminal";
-import { Container, Panel, Section } from "@/components/landing/layout-primitives";
+import { FlowDiagram } from "@/components/landing/flow-diagram";
 import {
-  landingPrimaryButton,
-  landingSecondaryButton,
-} from "@/components/landing/landing-button";
+  BlurWords,
+  Container,
+  Icon,
+  ghostButton,
+  primaryButton,
+} from "@/components/landing/landing-ui";
+
+const SECOND_LINE_DELAY_MS = 180;
+const ACTIONS_DELAY_MS = 420;
+const VISUAL_DELAY_MS = 560;
+
+function delayStyle(ms: number) {
+  return { "--q-delay": `${ms}ms` } as React.CSSProperties;
+}
 
 export function LandingHero() {
-  const [isDraftReady, setIsDraftReady] = useState(false);
-  const onDraftReady = useCallback(() => setIsDraftReady(true), []);
-
   return (
-    <Section>
-      <Panel label="Reply send">
-        <Container>
-          <div className="grid items-center gap-16 lg:grid-cols-12 lg:gap-12">
-            <div className="lg:col-span-7">
-              <h1 className="sp-display text-sp-text">
-                Reply <span className="text-sp-amber">&ldquo;send.&rdquo;</span>
-                <br />
-                That&rsquo;s the whole interface.
-              </h1>
+    <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">
+      <div aria-hidden="true" className="q-hero-glow pointer-events-none absolute inset-0 -z-10" />
 
-              <p className="sp-lead sp-measure mt-6 text-sp-muted">
-                {HERO_SUMMARY}
-              </p>
+      <Container className="flex flex-col items-center pt-24 pb-16 text-center sm:pt-32">
+        <h1 id="hero-title" className="q-hero-title max-w-[900px] text-q-fg">
+          <BlurWords text="Reply “send.”" />
+          <br />
+          <BlurWords
+            text="That’s the whole interface."
+            startMs={SECOND_LINE_DELAY_MS}
+            className="text-q-fg-3"
+          />
+        </h1>
 
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <PendingLink href="/dashboard" className={landingPrimaryButton}>
-                  Get started
-                </PendingLink>
-                <a href="#how-it-works" className={landingSecondaryButton}>
-                  Watch it decide
-                </a>
-              </div>
+        <div
+          className="q-enter mt-10 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3"
+          style={delayStyle(ACTIONS_DELAY_MS)}
+        >
+          <PendingLink href="/dashboard" className={primaryButton}>
+            Get started free
+            <Icon name="ArrowRight" />
+          </PendingLink>
+          <a href="#how-it-works" className={ghostButton}>
+            See how it works
+          </a>
+        </div>
 
-              <ul className="sp-label mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 normal-case tracking-[0.04em] text-sp-muted">
-                {HERO_PROOF.map((proof, index) => (
-                  <Fragment key={proof}>
-                    {index > 0 ? (
-                      <li aria-hidden="true" className="text-sp-muted/40">
-                        &middot;
-                      </li>
-                    ) : null}
-                    <li>{proof}</li>
-                  </Fragment>
-                ))}
-              </ul>
-            </div>
-
-            <div className="flex flex-col gap-8 lg:col-span-5">
-              <HeroPipeline onDraftReady={onDraftReady} />
-              <HeroTerminal isOpen={isDraftReady} />
-            </div>
-          </div>
-        </Container>
-      </Panel>
-    </Section>
+        <div className="q-enter mt-16 w-full sm:mt-20" style={delayStyle(VISUAL_DELAY_MS)}>
+          <FlowDiagram isPriority />
+        </div>
+      </Container>
+    </section>
   );
 }
