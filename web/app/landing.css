@@ -1,0 +1,273 @@
+/* Scoped so product screens keep their own tokens. */
+.quiet {
+    --q-canvas: #0c0a09;
+    --q-chrome: #110f0e;
+    --q-panel: #161413;
+    --q-sunken: #0a0908;
+    --q-raised: #1e1c1a;
+    --q-hover: #242220;
+    --q-active: #2c2a28;
+    --q-fg: #f3f1f0;
+    --q-fg-2: #cbc8c4;
+    --q-fg-3: #9c9894;
+    --q-fg-4: #75716d;
+    --q-line: rgba(255, 255, 255, 0.05);
+    --q-line-2: rgba(255, 255, 255, 0.08);
+    --q-line-3: rgba(255, 255, 255, 0.12);
+    --q-brand: #7659f3;
+    --q-brand-text: #aaa4ff;
+    --q-brand-subtle: rgba(118, 89, 243, 0.16);
+    --q-focus: rgba(170, 164, 255, 0.6);
+    --q-invert: #ecebe9;
+    --q-invert-hover: #ffffff;
+    --q-on-invert: #110f0e;
+    --q-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --q-status-neutral: #909090;
+    --q-status-info: #6aa6dc;
+    --q-status-attention: #e0b05e;
+    --q-status-review: #a993d8;
+    --q-status-success: #66b98a;
+    --q-status-danger: #e0706a;
+    --q-weight-medium: 510;
+    --q-weight-semibold: 590;
+    --q-ease: cubic-bezier(0.2, 0, 0, 1);
+    --q-ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+    --q-dur-fast: 100ms;
+    --q-dur-base: 150ms;
+    --q-reveal: 600ms;
+
+    background: var(--q-canvas);
+    color: var(--q-fg);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+}
+
+@theme inline {
+    --color-q-canvas: var(--q-canvas);
+    --color-q-chrome: var(--q-chrome);
+    --color-q-panel: var(--q-panel);
+    --color-q-sunken: var(--q-sunken);
+    --color-q-raised: var(--q-raised);
+    --color-q-hover: var(--q-hover);
+    --color-q-active: var(--q-active);
+    --color-q-fg: var(--q-fg);
+    --color-q-fg-2: var(--q-fg-2);
+    --color-q-fg-3: var(--q-fg-3);
+    --color-q-fg-4: var(--q-fg-4);
+    --color-q-line: var(--q-line);
+    --color-q-line-2: var(--q-line-2);
+    --color-q-line-3: var(--q-line-3);
+    --color-q-brand: var(--q-brand);
+    --color-q-brand-text: var(--q-brand-text);
+    --color-q-brand-subtle: var(--q-brand-subtle);
+    --color-q-invert: var(--q-invert);
+    --color-q-invert-hover: var(--q-invert-hover);
+    --color-q-on-invert: var(--q-on-invert);
+    --color-q-neutral: var(--q-status-neutral);
+    --color-q-info: var(--q-status-info);
+    --color-q-attention: var(--q-status-attention);
+    --color-q-review: var(--q-status-review);
+    --color-q-success: var(--q-status-success);
+    --color-q-danger: var(--q-status-danger);
+}
+
+.quiet :focus-visible {
+    outline: 2px solid var(--q-focus);
+    outline-offset: 2px;
+}
+
+.quiet ::selection {
+    background: var(--q-brand-subtle);
+}
+
+.quiet svg[data-icon] * {
+    vector-effect: non-scaling-stroke;
+}
+
+.q-container {
+    width: 100%;
+    max-width: 1120px;
+    margin-inline: auto;
+    padding-inline: 16px;
+}
+
+@media (min-width: 640px) {
+    .q-container {
+        padding-inline: 24px;
+    }
+}
+
+.q-section {
+    padding-block: 56px;
+    scroll-margin-top: 64px;
+}
+
+@media (min-width: 1024px) {
+    .q-section {
+        padding-block: 80px;
+    }
+}
+
+.q-medium {
+    font-weight: var(--q-weight-medium);
+}
+
+.q-semibold {
+    font-weight: var(--q-weight-semibold);
+}
+
+.q-hero-title {
+    font-size: clamp(2.75rem, 7.5vw, 5rem);
+    font-weight: var(--q-weight-semibold);
+    line-height: 1;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+}
+
+.q-section-title {
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: var(--q-weight-semibold);
+    line-height: 1.06;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+}
+
+.q-feature-title {
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    font-weight: var(--q-weight-semibold);
+    line-height: 1.15;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+}
+
+.q-lead {
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    letter-spacing: -0.011em;
+    text-wrap: pretty;
+}
+
+@media (min-width: 640px) {
+    .q-lead {
+        font-size: 1.1875rem;
+    }
+}
+
+.q-body {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    letter-spacing: -0.011em;
+}
+
+.q-eyebrow {
+    font-size: 0.8125rem;
+    font-weight: var(--q-weight-medium);
+    line-height: 1.25rem;
+    letter-spacing: -0.01em;
+}
+
+.q-mono {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+}
+
+.q-tnum {
+    font-variant-numeric: tabular-nums;
+}
+
+.q-surface {
+    background: var(--q-panel);
+    border: 1px solid var(--q-line-2);
+    box-shadow: var(--q-highlight);
+}
+
+.q-hero-glow {
+    background: radial-gradient(
+        ellipse 55% 40% at 50% 72%,
+        rgba(118, 89, 243, 0.12),
+        transparent 70%
+    );
+}
+
+.q-fade-top {
+    mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 88%, transparent);
+}
+
+.q-faq summary::-webkit-details-marker {
+    display: none;
+}
+
+.q-faq [data-icon] {
+    transition: transform var(--q-dur-base) var(--q-ease);
+}
+
+.q-faq[open] [data-icon] {
+    transform: rotate(45deg);
+}
+
+@keyframes q-enter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes q-blur-in {
+    from {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        filter: none;
+        transform: none;
+    }
+}
+
+.q-enter {
+    animation: q-enter var(--q-reveal) var(--q-ease-out-quint) backwards;
+    animation-delay: var(--q-delay, 0ms);
+}
+
+.q-blur-in {
+    display: inline-block;
+    animation: q-blur-in 800ms var(--q-ease-out-quint) backwards;
+    animation-delay: var(--q-delay, 0ms);
+}
+
+/* Gated so the page still reads without JavaScript. */
+.sp-js .q-reveal {
+    opacity: 0;
+    transform: translateY(12px);
+}
+
+.q-reveal {
+    transition: opacity var(--q-reveal) var(--q-ease-out-quint),
+        transform var(--q-reveal) var(--q-ease-out-quint);
+    transition-delay: var(--q-delay, 0ms);
+}
+
+.sp-js .q-reveal[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .q-enter,
+    .q-blur-in,
+        .q-reveal,
+    .q-faq [data-icon] {
+        transition: none;
+    }
+
+    .sp-js .q-reveal {
+        opacity: 1;
+        transform: none;
+    }
+}

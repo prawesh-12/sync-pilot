@@ -1,14 +1,7 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-/**
- * Brand marks as inline SVG so they can sit in animated nodes and inherit the
- * colour of the text beside them where we want them quiet.
- *
- * These say what SyncPilot connects to; they do not imply endorsement (the
- * Signal disclaimer lives in the footer). Full colour marks are never
- * recoloured — `mono` renders a flat currentColor silhouette instead.
- */
+// Full-colour marks are never recoloured; mono draws a silhouette.
 
 const DEFAULT_SIZE = 28;
 
@@ -59,8 +52,7 @@ export function GmailMark({
   );
 }
 
-// From Signal's 2024 brand assets. #3b45fd is Signal's ultramarine: never
-// re-tint it, and never substitute an icon-set speech bubble.
+// Signal's official ultramarine; never re-tint it.
 const SIGNAL_ULTRAMARINE = "#3b45fd";
 
 const SIGNAL_PATHS = [
@@ -106,7 +98,6 @@ export function SignalMark({
   );
 }
 
-/** The product's own mark: a raster asset, so it renders through next/image. */
 export function SyncPilotMark({
   size = DEFAULT_SIZE,
   className,
@@ -122,28 +113,5 @@ export function SyncPilotMark({
       height={size}
       className={cn("shrink-0 object-contain", className)}
     />
-  );
-}
-
-const WELL_SIZE_PX = 40;
-
-/** The 40px circular well every node mark sits in. */
-export function MarkWell({
-  className,
-  children,
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <span
-      style={{ width: WELL_SIZE_PX, height: WELL_SIZE_PX }}
-      className={cn(
-        "sp-surface-1 flex shrink-0 items-center justify-center rounded-full",
-        className,
-      )}
-    >
-      {children}
-    </span>
   );
 }
